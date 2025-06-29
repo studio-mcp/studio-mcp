@@ -1,0 +1,53 @@
+{
+  "name": "studio-mcp",
+  "version": "0.0.1",
+  "description": "Make any CLI command an MCP server",
+  "bin": {
+    "studio-mcp": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "preinspect": "npm run build",
+    "inspect": "npx @modelcontextprotocol/inspector -e PWD=\"$(pwd)\" node ./dist/cli.js --",
+    "prepublishOnly": "npm run build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "mcp",
+    "cli",
+    "tools",
+    "automation",
+    "command-line"
+  ],
+  "author": "Martin Emde <me@martinemde.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/martinemde/studio",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/martinemde/studio.git",
+    "directory": "studio-mcp"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "studio-mcp": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "jest": "^30.0.2",
+    "ts-jest": "^29.4.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
