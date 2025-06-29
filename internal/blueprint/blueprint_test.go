@@ -505,4 +505,34 @@ func TestBlueprint_EnhancedTemplateProcessing(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "{{incomplete"}, args)
 	})
+
+	t.Run("handles malformed template with only opening braces", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{no_closing_braces"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "{{no_closing_braces"}, args)
+	})
+
+	t.Run("handles malformed template with only closing braces", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "no_opening_braces}}"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "no_opening_braces}}"}, args)
+	})
+
+	t.Run("handles mixed valid and malformed templates", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{valid}}", "{{incomplete", "}}"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"valid": "works",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "works", "{{incomplete", "}}"}, args)
+	})
+
+	t.Run("handles empty template braces", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{}}"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "{{}}"}, args)
+	})
 }
