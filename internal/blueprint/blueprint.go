@@ -31,6 +31,7 @@ type template struct {
 	description string
 	isArray     bool
 	isOptional  bool
+	formatter   func(interface{}) []string
 }
 
 // FromArgs creates a new Blueprint from command arguments
@@ -74,6 +75,7 @@ func FromArgs(args []string) *Blueprint {
 				isArray:     isArray,
 				isOptional:  true,
 				description: description,
+				formatter:   getFormatter(isArray, false),
 			}
 
 			if isArray {
@@ -139,6 +141,7 @@ func FromArgs(args []string) *Blueprint {
 					name:        varName,
 					description: description,
 					isOptional:  false,
+					formatter:   getFormatter(false, false),
 				}
 				bp.templates = append(bp.templates, tmpl)
 			}
@@ -205,28 +208,20 @@ func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) ([]string, 
 		// Check if this is an array placeholder
 		if matches := optionalRegex.FindStringSubmatch(arg); matches != nil {
 			varName := strings.ReplaceAll(matches[1], "-", "_")
-			isArray := strings.Contains(arg, "...")
 
-			if isArray {
-				// Handle array expansion
-				if values, ok := params[varName]; ok {
-					// Handle both []string and []interface{} (from JSON)
-					if arr, ok := values.([]string); ok && len(arr) > 0 {
-						result = append(result, arr...)
-					} else if arr, ok := values.([]interface{}); ok && len(arr) > 0 {
-						for _, item := range arr {
-							if str, ok := item.(string); ok {
-								result = append(result, str)
-							}
-						}
-					}
+			// Find the template for this variable
+			var tmpl *template
+			for _, t := range bp.templates {
+				if t.name == varName && t.argIndex == i {
+					tmpl = &t
+					break
 				}
-			} else {
-				// Handle optional string
+			}
+
+			if tmpl != nil && tmpl.formatter != nil {
 				if value, ok := params[varName]; ok {
-					if str, ok := value.(string); ok && str != "" {
-						result = append(result, str)
-					}
+					formatted := tmpl.formatter(value)
+					result = append(result, formatted...)
 				}
 			}
 			continue
@@ -240,11 +235,23 @@ func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) ([]string, 
 				varName := strings.TrimSpace(match[1])
 				varName = strings.ReplaceAll(varName, "-", "_")
 
-				if value, ok := params[varName]; ok {
-					if str, ok := value.(string); ok {
-						// Replace the full template pattern with the value
-						fullPattern := match[0]
-						processedArg = strings.ReplaceAll(processedArg, fullPattern, str)
+				// Find the template for this variable
+				var tmpl *template
+				for _, t := range bp.templates {
+					if t.name == varName && t.argIndex == i {
+						tmpl = &t
+						break
+					}
+				}
+
+				if tmpl != nil && tmpl.formatter != nil {
+					if value, ok := params[varName]; ok {
+						formatted := tmpl.formatter(value)
+						if len(formatted) > 0 {
+							// Replace the full template pattern with the first formatted value
+							fullPattern := match[0]
+							processedArg = strings.ReplaceAll(processedArg, fullPattern, formatted[0])
+						}
 					}
 				}
 			}
@@ -263,4 +270,36 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// formatString formats a string value
+func formatString(value interface{}) []string {
+	if str, ok := value.(string); ok && str != "" {
+		return []string{str}
+	}
+	return []string{}
+}
+
+// formatArray formats an array value
+func formatArray(value interface{}) []string {
+	if arr, ok := value.([]string); ok {
+		return arr
+	} else if arr, ok := value.([]interface{}); ok {
+		result := make([]string, 0, len(arr))
+		for _, item := range arr {
+			if str, ok := item.(string); ok {
+				result = append(result, str)
+			}
+		}
+		return result
+	}
+	return []string{}
+}
+
+// getFormatter returns the appropriate formatter function
+func getFormatter(isArray, isBoolean bool) func(interface{}) []string {
+	if isArray {
+		return formatArray
+	}
+	return formatString
 }
