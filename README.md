@@ -46,7 +46,7 @@ If you're lucky, you can just install it:
 npm install -g studio-mcp
 ```
 
-After that, you'll be lucky if you can get this running without a full path somewhere. this as an mcp server:
+After that, you'll be lucky if you can get this running without a full path somewhere. Cursor and Claude don't run in your shell.
 
 ### Claude Desktop
 
