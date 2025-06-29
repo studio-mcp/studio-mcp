@@ -10,7 +10,7 @@ Make any CLI into a single tool MCP server.
 
 ## What's Included?
 
-`studio-mcp` is the simplest possible StdIO transport Model Context Protocol server.
+`studio-mcp` is the simplest possible [stdio](https://modelcontextprotocol.io/docs/concepts/transports) [Model Context Protocol](https://modelcontextprotocol.io/) server.
 
 Everything after the `studio-mcp` command will be turned into an MCP tool that runs just that command when called by Cursor, Claude, etc.
 
