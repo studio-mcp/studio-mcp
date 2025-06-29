@@ -6,6 +6,9 @@ yarn-debug.log*
 yarn-error.log*
 .nyc_output
 coverage/
+
+# Binaries downloaded by install.js
+bin/
 .DS_Store
 *.tgz
 .npm

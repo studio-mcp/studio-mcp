@@ -3,14 +3,17 @@
   "version": "0.0.2",
   "description": "Make any CLI command an MCP server",
   "bin": {
-    "studio-mcp": "dist/cli.js"
+    "studio-mcp": "./run.js"
   },
   "scripts": {
     "build": "tsc",
+    "build:pkg": "npm run build && npm run fix-imports && pkg ./dist/cli.js --targets node20-linux-x64 --output dist/studio-mcp-linux && pkg ./dist/cli.js --targets node20-macos-x64 --output dist/studio-mcp-macos && pkg ./dist/cli.js --targets node20-win-x64 --output dist/studio-mcp-win.exe",
+    "fix-imports": "sed -i.bak 's|@modelcontextprotocol/sdk/server/index.js|@modelcontextprotocol/sdk/dist/cjs/server/index.js|g' dist/studio.js && sed -i.bak 's|@modelcontextprotocol/sdk/server/stdio.js|@modelcontextprotocol/sdk/dist/cjs/server/stdio.js|g' dist/studio.js && sed -i.bak 's|@modelcontextprotocol/sdk/types.js|@modelcontextprotocol/sdk/dist/cjs/types.js|g' dist/studio.js && rm dist/*.bak",
     "dev": "tsx src/cli.ts",
     "preinspect": "npm run build",
     "inspect": "npx @modelcontextprotocol/inspector -e PWD=\"$(pwd)\" node ./dist/cli.js --",
     "prepublishOnly": "npm run build",
+    "postinstall": "node install.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -32,11 +35,21 @@
   },
   "files": [
     "dist/**/*",
+    "run.js",
+    "install.js",
     "README.md",
     "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/@modelcontextprotocol/sdk/dist/cjs/**/*"
+    ],
+    "scripts": [
+      "dist/**/*.js"
+    ]
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
@@ -45,6 +58,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
     "jest": "^30.0.2",
+    "@yao-pkg/pkg": "^6.5.1",
     "ts-jest": "^29.4.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
