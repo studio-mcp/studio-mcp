@@ -13,6 +13,8 @@ var (
 	templateRegex = regexp.MustCompile(`\{\{([^#}]+)(?:#([^}]+))?\}\}`)
 	// Matches [variable] or [variable#description] or [variable...] or [variable...#description]
 	optionalRegex = regexp.MustCompile(`^\[([^#.\]]+)(?:\.\.\.)?(?:#([^.\]]+))?(\.\.\.)?\]$`)
+	// Matches boolean flags like [-f] or [--flag] or [-f#description] or [--flag#description]
+	booleanFlagRegex = regexp.MustCompile(`^\[(-{1,2}[a-zA-Z][a-zA-Z0-9-]*)(?:#([^\]]+))?\]$`)
 )
 
 // Blueprint represents a parsed command template
@@ -59,6 +61,41 @@ func FromArgs(args []string) *Blueprint {
 
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
+
+		// Check for boolean flag pattern [-f] or [--flag] or [-f#description] or [--flag#description]
+		if matches := booleanFlagRegex.FindStringSubmatch(arg); matches != nil {
+			flag := matches[1]
+			description := ""
+			if len(matches) > 2 && matches[2] != "" {
+				description = strings.TrimSpace(matches[2])
+			}
+
+			// Extract property name from flag (remove dashes)
+			propName := strings.TrimLeft(flag, "-")
+			propName = strings.ReplaceAll(propName, "-", "_")
+
+			if description == "" {
+				description = fmt.Sprintf("Enable %s flag", flag)
+			}
+
+			tmpl := template{
+				argIndex:    i,
+				name:        propName,
+				isArray:     false,
+				isOptional:  true,
+				description: description,
+				formatter:   getFormatter(false, true, flag),
+			}
+
+			properties[propName] = &jsonschema.Schema{
+				Type:        "boolean",
+				Description: description,
+			}
+
+			descriptionParts = append(descriptionParts, "["+flag+"]")
+			bp.templates = append(bp.templates, tmpl)
+			continue
+		}
 
 		// Check for optional pattern [variable] or [variable...] or [variable#description] or [variable...#description]
 		if matches := optionalRegex.FindStringSubmatch(arg); matches != nil {
@@ -205,7 +242,31 @@ func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) ([]string, 
 
 		arg := bp.args[i]
 
-		// Check if this is an array placeholder
+		// Check if this is a boolean flag placeholder
+		if matches := booleanFlagRegex.FindStringSubmatch(arg); matches != nil {
+			flag := matches[1]
+			propName := strings.TrimLeft(flag, "-")
+			propName = strings.ReplaceAll(propName, "-", "_")
+
+			// Find the template for this variable
+			var tmpl *template
+			for _, t := range bp.templates {
+				if t.name == propName && t.argIndex == i {
+					tmpl = &t
+					break
+				}
+			}
+
+			if tmpl != nil && tmpl.formatter != nil {
+				if value, ok := params[propName]; ok {
+					formatted := tmpl.formatter(value)
+					result = append(result, formatted...)
+				}
+			}
+			continue
+		}
+
+		// Check if this is an optional placeholder
 		if matches := optionalRegex.FindStringSubmatch(arg); matches != nil {
 			varName := strings.ReplaceAll(matches[1], "-", "_")
 
@@ -296,10 +357,23 @@ func formatArray(value interface{}) []string {
 	return []string{}
 }
 
+// formatBoolean formats a boolean flag value
+func formatBoolean(flag string) func(interface{}) []string {
+	return func(value interface{}) []string {
+		if b, ok := value.(bool); ok && b {
+			return []string{flag}
+		}
+		return []string{}
+	}
+}
+
 // getFormatter returns the appropriate formatter function
-func getFormatter(isArray, isBoolean bool) func(interface{}) []string {
+func getFormatter(isArray, isBoolean bool, flag ...string) func(interface{}) []string {
 	if isArray {
 		return formatArray
+	}
+	if isBoolean && len(flag) > 0 {
+		return formatBoolean(flag[0])
 	}
 	return formatString
 }

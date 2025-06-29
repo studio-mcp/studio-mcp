@@ -536,3 +536,144 @@ func TestBlueprint_EnhancedTemplateProcessing(t *testing.T) {
 		assert.Equal(t, []string{"echo", "{{}}"}, args)
 	})
 }
+
+func TestBlueprint_ParseBooleanFlags(t *testing.T) {
+	t.Run("parses short boolean flag without description", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[-f]"})
+
+		assert.Equal(t, "ls", bp.BaseCommand)
+		assert.Equal(t, "ls", bp.ToolName)
+		assert.Equal(t, "Run the shell command `ls [-f]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"f": {
+					Type:        "boolean",
+					Description: "Enable -f flag",
+				},
+			},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses long boolean flag without description", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[--force]"})
+
+		assert.Equal(t, "ls", bp.BaseCommand)
+		assert.Equal(t, "ls", bp.ToolName)
+		assert.Equal(t, "Run the shell command `ls [--force]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"force": {
+					Type:        "boolean",
+					Description: "Enable --force flag",
+				},
+			},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses boolean flag with description", func(t *testing.T) {
+		bp := FromArgs([]string{"rm", "[-f#force removal]"})
+
+		assert.Equal(t, "rm", bp.BaseCommand)
+		assert.Equal(t, "rm", bp.ToolName)
+		assert.Equal(t, "Run the shell command `rm [-f]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"f": {
+					Type:        "boolean",
+					Description: "force removal",
+				},
+			},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses mixed boolean flags and other arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"cp", "[-r#recursive]", "{{source}}", "{{dest}}"})
+
+		assert.Equal(t, "cp", bp.BaseCommand)
+		assert.Equal(t, "cp", bp.ToolName)
+		assert.Equal(t, "Run the shell command `cp [-r] {{source}} {{dest}}`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"r": {
+					Type:        "boolean",
+					Description: "recursive",
+				},
+				"source": {
+					Type: "string",
+				},
+				"dest": {
+					Type: "string",
+				},
+			},
+			Required: []string{"source", "dest"},
+		}, bp.InputSchema)
+	})
+}
+
+func TestBlueprint_BuildCommandArgsWithBooleanFlags(t *testing.T) {
+	t.Run("builds command with boolean flag enabled", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[-f]"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"f": true,
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls", "-f"}, args)
+	})
+
+	t.Run("builds command with boolean flag disabled", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[-f]"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"f": false,
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls"}, args)
+	})
+
+	t.Run("builds command with boolean flag omitted", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[-f]"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls"}, args)
+	})
+
+	t.Run("builds command with long boolean flag enabled", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[--force]"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"force": true,
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls", "--force"}, args)
+	})
+
+	t.Run("builds command with mixed boolean and string arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"cp", "[-r]", "{{source}}", "{{dest}}"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"r":      true,
+			"source": "file1.txt",
+			"dest":   "file2.txt",
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"cp", "-r", "file1.txt", "file2.txt"}, args)
+	})
+
+	t.Run("builds command with mixed boolean flags some enabled some disabled", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[-l]", "[-a]", "[--human-readable]"})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
+			"l":              true,
+			"a":              false,
+			"human_readable": true,
+		})
+
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls", "-l", "--human-readable"}, args)
+	})
+}
