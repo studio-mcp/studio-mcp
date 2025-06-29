@@ -35,10 +35,10 @@ $ npx -y studio-mcp command "{{ required_argument # Description of argument }}" 
 
 You can run almost any command. Since you're just renting the place, please be a good tenant and don't `rm -rf` anything.
 
-## Move-In(stall)
+## Move-Install
 
 These install instructions are like my lease agreement: full of gotchas.
-Have your lawyer read it over. You do have a lawyer right? 
+Have your lawyer read it over. (You do have a lawyer right?)
 
 If you're lucky, you can just install it:
 
