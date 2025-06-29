@@ -3,6 +3,7 @@ package blueprint
 import (
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,9 +14,9 @@ func TestBlueprint_ParseSimpleCommand(t *testing.T) {
 		assert.Equal(t, "git", bp.BaseCommand)
 		assert.Equal(t, "git", bp.ToolName)
 		assert.Equal(t, "Run the shell command `git status`", bp.ToolDescription)
-		assert.Equal(t, map[string]interface{}{
-			"type":       "object",
-			"properties": map[string]interface{}{},
+		assert.Equal(t, &jsonschema.Schema{
+			Type:       "object",
+			Properties: map[string]*jsonschema.Schema{},
 		}, bp.InputSchema)
 	})
 
@@ -23,16 +24,16 @@ func TestBlueprint_ParseSimpleCommand(t *testing.T) {
 		bp := FromArgs([]string{"git", "status", "[args...]"})
 
 		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"args": map[string]interface{}{
-					"type":        "array",
-					"items":       map[string]interface{}{"type": "string"},
-					"description": "Additional command line arguments",
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"args": {
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: "Additional command line arguments",
 				},
 			},
-			"required": []string{"args"},
+			Required: []string{"args"},
 		}, bp.InputSchema)
 	})
 }
@@ -44,15 +45,15 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		assert.Equal(t, "curl", bp.BaseCommand)
 		assert.Equal(t, "curl", bp.ToolName)
 		assert.Equal(t, "Run the shell command `curl https://en.m.wikipedia.org/wiki/{{page}}`", bp.ToolDescription)
-		assert.Equal(t, map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"page": map[string]interface{}{
-					"type":        "string",
-					"description": "A valid wikipedia page",
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"page": {
+					Type:        "string",
+					Description: "A valid wikipedia page",
 				},
 			},
-			"required": []string{"page"},
+			Required: []string{"page"},
 		}, bp.InputSchema)
 	})
 
@@ -60,30 +61,186 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{text}}"})
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"text": map[string]interface{}{
-					"type": "string",
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"text": {
+					Type: "string",
 				},
 			},
-			"required": []string{"text"},
+			Required: []string{"text"},
 		}, bp.InputSchema)
 	})
 
 	t.Run("parses blueprinted command with spaces in description", func(t *testing.T) {
 		bp := FromArgs([]string{"curl", "https://en.m.wikipedia.org/wiki/{{page # A valid wikipedia page}}"})
 
-		assert.Equal(t, map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"page": map[string]interface{}{
-					"type":        "string",
-					"description": "A valid wikipedia page",
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"page": {
+					Type:        "string",
+					Description: "A valid wikipedia page",
 				},
 			},
-			"required": []string{"page"},
+			Required: []string{"page"},
 		}, bp.InputSchema)
+	})
+
+	t.Run("parses mixed blueprints with required and optional arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"command", "{{arg1#Custom description}}", "[arg2]"})
+
+		assert.Equal(t, "command", bp.BaseCommand)
+		assert.Equal(t, "command", bp.ToolName)
+		assert.Equal(t, "Run the shell command `command {{arg1}} [arg2]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"arg1": {
+					Type:        "string",
+					Description: "Custom description",
+				},
+				"arg2": {
+					Type: "string",
+				},
+			},
+			Required: []string{"arg1"},
+		}, bp.InputSchema)
+	})
+
+	t.Run("prioritizes explicit description over default", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{text#Explicit description}}", "{{text}}"})
+
+		assert.Equal(t, "echo", bp.BaseCommand)
+		assert.Equal(t, "echo", bp.ToolName)
+		assert.Equal(t, "Run the shell command `echo {{text}} {{text}}`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"text": {
+					Type:        "string",
+					Description: "Explicit description",
+				},
+			},
+			Required: []string{"text"},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses array arguments with description", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "[files...]"})
+
+		assert.Equal(t, "echo", bp.BaseCommand)
+		assert.Equal(t, "echo", bp.ToolName)
+		assert.Equal(t, "Run the shell command `echo [files...]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"files": {
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: "Additional command line arguments",
+				},
+			},
+			Required: []string{"files"},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses array arguments without description", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[paths...]"})
+
+		assert.Equal(t, "ls", bp.BaseCommand)
+		assert.Equal(t, "ls", bp.ToolName)
+		assert.Equal(t, "Run the shell command `ls [paths...]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"paths": {
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: "Additional command line arguments",
+				},
+			},
+			Required: []string{"paths"},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses optional string field without ellipsis", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "[optional]"})
+
+		assert.Equal(t, "echo", bp.BaseCommand)
+		assert.Equal(t, "echo", bp.ToolName)
+		assert.Equal(t, "Run the shell command `echo [optional]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"optional": {
+					Type: "string",
+				},
+			},
+		}, bp.InputSchema)
+	})
+
+	t.Run("converts dashes to underscores in argument names", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "[has-dashes]"})
+
+		assert.Equal(t, "echo", bp.BaseCommand)
+		assert.Equal(t, "echo", bp.ToolName)
+		assert.Equal(t, "Run the shell command `echo [has_dashes]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"has_dashes": {
+					Type: "string",
+				},
+			},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses mixed string and array arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"command", "{{flag#Command flag}}", "[files...]"})
+
+		assert.Equal(t, "command", bp.BaseCommand)
+		assert.Equal(t, "command", bp.ToolName)
+		assert.Equal(t, "Run the shell command `command {{flag}} [files...]`", bp.ToolDescription)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"flag": {
+					Type:        "string",
+					Description: "Command flag",
+				},
+				"files": {
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: "Additional command line arguments",
+				},
+			},
+			Required: []string{"flag", "files"},
+		}, bp.InputSchema)
+	})
+}
+
+func TestBlueprint_ToolName(t *testing.T) {
+	t.Run("converts command to valid tool name", func(t *testing.T) {
+		bp := FromArgs([]string{"git-flow"})
+		assert.Equal(t, "git_flow", bp.ToolName)
+	})
+}
+
+func TestBlueprint_ToolDescription(t *testing.T) {
+	t.Run("generates description for simple command without args", func(t *testing.T) {
+		bp := FromArgs([]string{"git"})
+		assert.Equal(t, "Run the shell command `git`", bp.ToolDescription)
+	})
+
+	t.Run("generates description for simple command with explicit args", func(t *testing.T) {
+		bp := FromArgs([]string{"git", "[args...]"})
+		assert.Equal(t, "Run the shell command `git [args...]`", bp.ToolDescription)
+	})
+
+	t.Run("generates description for blueprinted command", func(t *testing.T) {
+		bp := FromArgs([]string{"rails", "generate", "{{generator#A rails generator}}"})
+		assert.Equal(t, "Run the shell command `rails generate {{generator}}`", bp.ToolDescription)
 	})
 }
 
@@ -154,6 +311,106 @@ func TestBlueprint_BuildCommandArgs(t *testing.T) {
 		bp := FromArgs([]string{"echo", "hello", "[name]"})
 		args := bp.BuildCommandArgs(map[string]interface{}{})
 
+		assert.Equal(t, []string{"echo", "hello"}, args)
+	})
+
+	t.Run("builds command with blueprint arguments containing spaces", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{text#text to echo}}"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"text": "Hello World",
+		})
+
+		assert.Equal(t, []string{"echo", "Hello World"}, args)
+	})
+
+	t.Run("builds command with mixed blueprint with and without descriptions", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{greeting#The greeting}}", "{{name}}"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"greeting": "Hello",
+			"name":     "World",
+		})
+
+		assert.Equal(t, []string{"echo", "Hello", "World"}, args)
+	})
+
+	t.Run("builds command with blueprint arguments in mixed content", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "simon says {{text#text for simon to say}}"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"text": "Hello World",
+		})
+
+		assert.Equal(t, []string{"echo", "simon says Hello World"}, args)
+	})
+
+	t.Run("builds command with blueprint arguments containing special shell characters", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{text#text to echo}}"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"text": "Hello & World; echo pwned",
+		})
+
+		assert.Equal(t, []string{"echo", "Hello & World; echo pwned"}, args)
+	})
+
+	t.Run("builds command with blueprint in middle of argument", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "--message={{text#message content}}"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"text": "Hello World",
+		})
+
+		assert.Equal(t, []string{"echo", "--message=Hello World"}, args)
+	})
+
+	t.Run("builds command with blueprint with prefix and suffix", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "prefix-{{text#middle part}}-suffix"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"text": "Hello World",
+		})
+
+		assert.Equal(t, []string{"echo", "prefix-Hello World-suffix"}, args)
+	})
+
+	t.Run("builds command with mixed blueprint and non-blueprint arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "static", "{{dynamic#dynamic content}}", "more-static"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"dynamic": "Hello World",
+		})
+
+		assert.Equal(t, []string{"echo", "static", "Hello World", "more-static"}, args)
+	})
+
+	t.Run("preserves shell safety with complex blueprint values", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "Result: {{text#text content}}"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"text": "$(echo 'dangerous'); echo 'safe'",
+		})
+
+		assert.Equal(t, []string{"echo", "Result: $(echo 'dangerous'); echo 'safe'"}, args)
+	})
+
+	t.Run("builds command with mixed string and array arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{prefix#Prefix text}}", "[files...]"})
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"prefix": "Files:",
+			"files":  []string{"a.txt", "b.txt"},
+		})
+
+		assert.Equal(t, []string{"echo", "Files:", "a.txt", "b.txt"}, args)
+	})
+
+	t.Run("builds command with mixed required and optional arguments", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{required#Required text}}", "[optional]"})
+
+		// With both provided
+		args := bp.BuildCommandArgs(map[string]interface{}{
+			"required": "hello",
+			"optional": "world",
+		})
+		assert.Equal(t, []string{"echo", "hello", "world"}, args)
+
+		// With only required provided
+		args = bp.BuildCommandArgs(map[string]interface{}{
+			"required": "hello",
+		})
 		assert.Equal(t, []string{"echo", "hello"}, args)
 	})
 }

@@ -6,7 +6,6 @@ import (
 	"studio-mcp/internal/blueprint"
 	"studio-mcp/internal/tool"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -62,51 +61,12 @@ func (s *Studio) Serve() error {
 		}, nil
 	}
 
-	// Convert blueprint schema to jsonschema.Schema
-	schema := &jsonschema.Schema{
-		Type: "object",
-	}
-
-	if props, ok := s.Blueprint.InputSchema["properties"].(map[string]interface{}); ok && len(props) > 0 {
-		schema.Properties = make(map[string]*jsonschema.Schema)
-
-		for name, prop := range props {
-			if propMap, ok := prop.(map[string]interface{}); ok {
-				propSchema := &jsonschema.Schema{}
-
-				if propType, ok := propMap["type"].(string); ok {
-					propSchema.Type = propType
-				}
-
-				if desc, ok := propMap["description"].(string); ok {
-					propSchema.Description = desc
-				}
-
-				// Handle array type with items
-				if propType, ok := propMap["type"].(string); ok && propType == "array" {
-					if items, ok := propMap["items"].(map[string]interface{}); ok {
-						if itemType, ok := items["type"].(string); ok {
-							propSchema.Items = &jsonschema.Schema{Type: itemType}
-						}
-					}
-				}
-
-				schema.Properties[name] = propSchema
-			}
-		}
-
-		// Add required fields
-		if required, ok := s.Blueprint.InputSchema["required"].([]string); ok && len(required) > 0 {
-			schema.Required = required
-		}
-	}
-
-	// Add the tool to the server using NewServerTool with schema
+	// Add the tool to the server using NewServerTool with schema directly from blueprint
 	serverTool := mcp.NewServerTool[map[string]any, map[string]any](
 		s.Blueprint.ToolName,
 		s.Blueprint.ToolDescription,
 		handler,
-		mcp.Input(mcp.Schema(schema)),
+		mcp.Input(mcp.Schema(s.Blueprint.InputSchema)),
 	)
 
 	server.AddTools(serverTool)

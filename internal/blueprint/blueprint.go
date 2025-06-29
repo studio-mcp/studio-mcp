@@ -3,6 +3,8 @@ package blueprint
 import (
 	"regexp"
 	"strings"
+
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 )
 
 var (
@@ -17,7 +19,7 @@ type Blueprint struct {
 	BaseCommand     string
 	ToolName        string
 	ToolDescription string
-	InputSchema     map[string]interface{}
+	InputSchema     *jsonschema.Schema
 	args            []string
 	templates       []template
 }
@@ -35,9 +37,9 @@ func FromArgs(args []string) *Blueprint {
 	bp := &Blueprint{
 		args:      args,
 		templates: []template{},
-		InputSchema: map[string]interface{}{
-			"type":       "object",
-			"properties": map[string]interface{}{},
+		InputSchema: &jsonschema.Schema{
+			Type:       "object",
+			Properties: make(map[string]*jsonschema.Schema),
 		},
 	}
 
@@ -50,7 +52,7 @@ func FromArgs(args []string) *Blueprint {
 
 	// Parse arguments for templates
 	descriptionParts := []string{bp.BaseCommand}
-	properties := make(map[string]interface{})
+	properties := make(map[string]*jsonschema.Schema)
 	required := []string{}
 
 	for i := 1; i < len(args); i++ {
@@ -70,16 +72,16 @@ func FromArgs(args []string) *Blueprint {
 
 			if isArray {
 				tmpl.description = "Additional command line arguments"
-				properties[varName] = map[string]interface{}{
-					"type":        "array",
-					"items":       map[string]interface{}{"type": "string"},
-					"description": tmpl.description,
+				properties[varName] = &jsonschema.Schema{
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: tmpl.description,
 				}
 				required = append(required, varName)
 				descriptionParts = append(descriptionParts, "["+varName+"...]")
 			} else {
-				properties[varName] = map[string]interface{}{
-					"type": "string",
+				properties[varName] = &jsonschema.Schema{
+					Type: "string",
 				}
 				descriptionParts = append(descriptionParts, "["+varName+"]")
 			}
@@ -104,18 +106,16 @@ func FromArgs(args []string) *Blueprint {
 
 				// Only set description if this is the first occurrence or has a description
 				if existingProp, exists := properties[varName]; !exists || description != "" {
-					prop := map[string]interface{}{
-						"type": "string",
+					prop := &jsonschema.Schema{
+						Type: "string",
 					}
 					if description != "" {
-						prop["description"] = description
+						prop.Description = description
 					}
 					properties[varName] = prop
 				} else if exists && description != "" {
 					// Update description if provided
-					if propMap, ok := existingProp.(map[string]interface{}); ok {
-						propMap["description"] = description
-					}
+					existingProp.Description = description
 				}
 
 				if !contains(required, varName) {
@@ -143,10 +143,10 @@ func FromArgs(args []string) *Blueprint {
 
 	// Update InputSchema
 	if len(properties) > 0 {
-		bp.InputSchema["properties"] = properties
+		bp.InputSchema.Properties = properties
 	}
 	if len(required) > 0 {
-		bp.InputSchema["required"] = required
+		bp.InputSchema.Required = required
 	}
 
 	return bp

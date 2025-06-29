@@ -1,4 +1,4 @@
-package studio
+package cmd
 
 import (
 	"bufio"
@@ -40,7 +40,7 @@ type InitializeParams struct {
 // sendMCPRequest spawns the Go binary and sends an MCP request over stdio
 func sendMCPRequest(t *testing.T, commandArgs []string, request MCPRequest, timeout time.Duration) MCPResponse {
 	// Build the project first
-	projectRoot, err := filepath.Abs("../..")
+	projectRoot, err := filepath.Abs("..")
 	require.NoError(t, err)
 
 	buildCmd := exec.Command("go", "build", "-o", "studio-mcp", ".")
@@ -365,6 +365,218 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 					assert.Equal(t, false, isError)
 				}
 			})
+
+			t.Run("executes blueprinted command with additional args", func(t *testing.T) {
+				request := MCPRequest{
+					JSONRPC: "2.0",
+					ID:      "6",
+					Method:  "tools/call",
+					Params: map[string]interface{}{
+						"name": "echo",
+						"arguments": map[string]interface{}{
+							"text": "Hello",
+							"args": []string{"World", "from", "args"},
+						},
+					},
+				}
+
+				response := sendMCPRequest(t, []string{"echo", "{{text#the text to echo}}", "[args...]"}, request, timeout)
+
+				assert.Equal(t, "2.0", response.JSONRPC)
+				assert.Equal(t, "6", response.ID)
+
+				result, ok := response.Result.(map[string]interface{})
+				require.True(t, ok)
+
+				content, ok := result["content"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, content, 1)
+
+				textContent, ok := content[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "text", textContent["type"])
+				assert.Equal(t, "Hello World from args", textContent["text"])
+
+				if isError, exists := result["isError"]; exists {
+					assert.Equal(t, false, isError)
+				}
+			})
+
+			t.Run("handles blueprint arguments with spaces", func(t *testing.T) {
+				request := MCPRequest{
+					JSONRPC: "2.0",
+					ID:      "7",
+					Method:  "tools/call",
+					Params: map[string]interface{}{
+						"name": "echo",
+						"arguments": map[string]interface{}{
+							"text": "Hello World with spaces",
+						},
+					},
+				}
+
+				response := sendMCPRequest(t, []string{"echo", "{{text#the text to echo}}"}, request, timeout)
+
+				assert.Equal(t, "2.0", response.JSONRPC)
+				assert.Equal(t, "7", response.ID)
+
+				result, ok := response.Result.(map[string]interface{})
+				require.True(t, ok)
+
+				content, ok := result["content"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, content, 1)
+
+				textContent, ok := content[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "text", textContent["type"])
+				assert.Equal(t, "Hello World with spaces", textContent["text"])
+
+				if isError, exists := result["isError"]; exists {
+					assert.Equal(t, false, isError)
+				}
+			})
+
+			t.Run("handles mixed blueprint with spaces", func(t *testing.T) {
+				request := MCPRequest{
+					JSONRPC: "2.0",
+					ID:      "8",
+					Method:  "tools/call",
+					Params: map[string]interface{}{
+						"name": "echo",
+						"arguments": map[string]interface{}{
+							"text": "Hello World",
+						},
+					},
+				}
+
+				response := sendMCPRequest(t, []string{"echo", "simon says {{text#the text to echo}}"}, request, timeout)
+
+				assert.Equal(t, "2.0", response.JSONRPC)
+				assert.Equal(t, "8", response.ID)
+
+				result, ok := response.Result.(map[string]interface{})
+				require.True(t, ok)
+
+				content, ok := result["content"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, content, 1)
+
+				textContent, ok := content[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "text", textContent["type"])
+				assert.Equal(t, "simon says Hello World", textContent["text"])
+
+				if isError, exists := result["isError"]; exists {
+					assert.Equal(t, false, isError)
+				}
+			})
+
+			t.Run("handles blueprint definitions with spaces around hash", func(t *testing.T) {
+				request := MCPRequest{
+					JSONRPC: "2.0",
+					ID:      "9",
+					Method:  "tools/call",
+					Params: map[string]interface{}{
+						"name": "echo",
+						"arguments": map[string]interface{}{
+							"text": "Hello World",
+						},
+					},
+				}
+
+				response := sendMCPRequest(t, []string{"echo", "{{text # the text to echo}}"}, request, timeout)
+
+				assert.Equal(t, "2.0", response.JSONRPC)
+				assert.Equal(t, "9", response.ID)
+
+				result, ok := response.Result.(map[string]interface{})
+				require.True(t, ok)
+
+				content, ok := result["content"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, content, 1)
+
+				textContent, ok := content[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "text", textContent["type"])
+				assert.Equal(t, "Hello World", textContent["text"])
+
+				if isError, exists := result["isError"]; exists {
+					assert.Equal(t, false, isError)
+				}
+			})
+
+			t.Run("handles blueprints without descriptions", func(t *testing.T) {
+				request := MCPRequest{
+					JSONRPC: "2.0",
+					ID:      "10",
+					Method:  "tools/list",
+				}
+
+				response := sendMCPRequest(t, []string{"echo", "{{text}}"}, request, timeout)
+
+				result, ok := response.Result.(map[string]interface{})
+				require.True(t, ok)
+
+				tools, ok := result["tools"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, tools, 1)
+
+				tool, ok := tools[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "echo", tool["name"])
+				assert.Equal(t, "Run the shell command `echo {{text}}`", tool["description"])
+
+				inputSchema, ok := tool["inputSchema"].(map[string]interface{})
+				require.True(t, ok)
+
+				properties, ok := inputSchema["properties"].(map[string]interface{})
+				require.True(t, ok)
+				assert.Contains(t, properties, "text")
+
+				textProp, ok := properties["text"].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "string", textProp["type"])
+				// Description should be undefined/omitted when not provided
+				_, hasDescription := textProp["description"]
+				assert.False(t, hasDescription)
+			})
+
+			t.Run("executes blueprints without descriptions", func(t *testing.T) {
+				request := MCPRequest{
+					JSONRPC: "2.0",
+					ID:      "11",
+					Method:  "tools/call",
+					Params: map[string]interface{}{
+						"name": "echo",
+						"arguments": map[string]interface{}{
+							"text": "Hello Blueprint!",
+						},
+					},
+				}
+
+				response := sendMCPRequest(t, []string{"echo", "{{text}}"}, request, timeout)
+
+				assert.Equal(t, "2.0", response.JSONRPC)
+				assert.Equal(t, "11", response.ID)
+
+				result, ok := response.Result.(map[string]interface{})
+				require.True(t, ok)
+
+				content, ok := result["content"].([]interface{})
+				require.True(t, ok)
+				require.Len(t, content, 1)
+
+				textContent, ok := content[0].(map[string]interface{})
+				require.True(t, ok)
+				assert.Equal(t, "text", textContent["type"])
+				assert.Equal(t, "Hello Blueprint!", textContent["text"])
+
+				if isError, exists := result["isError"]; exists {
+					assert.Equal(t, false, isError)
+				}
+			})
 		})
 	})
 
@@ -410,6 +622,65 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 			assert.Equal(t, "2.0", response.JSONRPC)
 			assert.Equal(t, "13", response.ID)
 			assert.NotNil(t, response.Error)
+		})
+	})
+
+	t.Run("ComplexCommands", func(t *testing.T) {
+		t.Run("works with git commands", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "14",
+				Method:  "tools/list",
+			}
+
+			response := sendMCPRequest(t, []string{"git", "status", "[args...]"}, request, timeout)
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+
+			tools, ok := result["tools"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, tools, 1)
+
+			tool, ok := tools[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "git", tool["name"])
+			assert.Equal(t, "Run the shell command `git status [args...]`", tool["description"])
+		})
+
+		t.Run("works with multiple blueprint arguments", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "15",
+				Method:  "tools/list",
+			}
+
+			response := sendMCPRequest(t, []string{
+				"rails", "generate",
+				"{{generator#Rails generator name}}",
+				"{{name#Resource name}}",
+			}, request, timeout)
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+
+			tools, ok := result["tools"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, tools, 1)
+
+			tool, ok := tools[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "rails", tool["name"])
+			assert.Equal(t, "Run the shell command `rails generate {{generator}} {{name}}`", tool["description"])
+
+			inputSchema, ok := tool["inputSchema"].(map[string]interface{})
+			require.True(t, ok)
+
+			properties, ok := inputSchema["properties"].(map[string]interface{})
+			require.True(t, ok)
+			assert.Contains(t, properties, "generator")
+			assert.Contains(t, properties, "name")
+			assert.NotContains(t, properties, "args")
 		})
 	})
 }
