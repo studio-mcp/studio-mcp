@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"studio-mcp/internal/studio"
 
 	"github.com/spf13/cobra"
 )
@@ -61,9 +62,14 @@ Example:
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// This will be implemented later
-		// For now, just return nil to make tests pass
-		return nil
+		// Create a new Studio instance
+		s, err := studio.New(args, debugFlag)
+		if err != nil {
+			return err
+		}
+
+		// Start the MCP server
+		return s.Serve()
 	},
 }
 

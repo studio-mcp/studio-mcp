@@ -127,3 +127,37 @@ func TestHelpTextContent(t *testing.T) {
 		assert.Contains(t, output, expected, "Help text should contain: %s", expected)
 	}
 }
+
+func TestRootCommand_Execution(t *testing.T) {
+	t.Run("executes simple command", func(t *testing.T) {
+		// Reset command to ensure clean state
+		resetRootCmd()
+
+		rootCmd.SetArgs([]string{"echo", "hello"})
+		var buf bytes.Buffer
+		rootCmd.SetOut(&buf)
+		rootCmd.SetErr(&buf)
+
+		err := rootCmd.Execute()
+		assert.NoError(t, err)
+
+		// For now this just tests that it doesn't error
+		// The actual MCP server implementation will come later
+	})
+
+	t.Run("handles blueprint arguments", func(t *testing.T) {
+		// Reset command to ensure clean state
+		resetRootCmd()
+
+		rootCmd.SetArgs([]string{"echo", "{{message#Text to display}}"})
+		var buf bytes.Buffer
+		rootCmd.SetOut(&buf)
+		rootCmd.SetErr(&buf)
+
+		err := rootCmd.Execute()
+		assert.NoError(t, err)
+
+		// For now this just tests that it doesn't error
+		// The actual MCP server implementation will come later
+	})
+}
