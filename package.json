@@ -1,6 +1,6 @@
 {
   "name": "studio-mcp",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Make any CLI command an MCP server",
   "bin": {
     "studio-mcp": "dist/cli.js"
@@ -39,8 +39,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "studio-mcp": "^0.0.1"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
