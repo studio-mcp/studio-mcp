@@ -3,7 +3,7 @@ import { Studio } from '../src/studio';
 describe('Studio', () => {
   describe('constructor', () => {
     it('throws error with empty argv', () => {
-      expect(() => new Studio([])).toThrow('Usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
+      expect(() => new Studio([])).toThrow('usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
     });
 
     it('creates studio instance with valid argv', () => {
@@ -35,7 +35,79 @@ describe('Studio', () => {
     });
 
     it('throws error when only flags provided', () => {
-      expect(() => new Studio(['--debug'])).toThrow('Usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
+      expect(() => new Studio(['--debug'])).toThrow('usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
+    });
+
+    describe('help functionality', () => {
+      let consoleInfoSpy: jest.SpyInstance;
+      let processExitSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
+        processExitSpy = jest.spyOn(process, 'exit').mockImplementation();
+      });
+
+      afterEach(() => {
+        consoleInfoSpy.mockRestore();
+        processExitSpy.mockRestore();
+      });
+
+      it('shows help and exits with --help flag', () => {
+        new Studio(['--help']);
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('usage: studio-mcp [--debug] <command>'));
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('studio-mcp is a tool for running a single command MCP server'));
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('-h, --help - Show this help message and exit'));
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('--debug - Print debug logs to stderr'));
+        expect(processExitSpy).toHaveBeenCalledWith(0);
+      });
+
+      it('shows help and exits with -h flag', () => {
+        new Studio(['-h']);
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('usage: studio-mcp [--debug] <command>'));
+        expect(processExitSpy).toHaveBeenCalledWith(0);
+      });
+
+      it('shows help with --help flag even when command is provided', () => {
+        new Studio(['--help', 'echo', 'hello']);
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('usage: studio-mcp [--debug] <command>'));
+        expect(processExitSpy).toHaveBeenCalledWith(0);
+      });
+
+      it('shows help with -h flag even when command is provided', () => {
+        new Studio(['-h', 'echo', 'hello']);
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('usage: studio-mcp [--debug] <command>'));
+        expect(processExitSpy).toHaveBeenCalledWith(0);
+      });
+
+      it('shows help with --debug --help flags', () => {
+        new Studio(['--debug', '--help']);
+
+        expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('usage: studio-mcp [--debug] <command>'));
+        expect(processExitSpy).toHaveBeenCalledWith(0);
+      });
+
+      it('shows complete help text content', () => {
+        new Studio(['--help']);
+
+        const helpCall = consoleInfoSpy.mock.calls[0][0];
+        expect(helpCall).toContain('usage: studio-mcp [--debug] <command> --example "{{req # required arg}}" "[args... # array of args]"');
+        expect(helpCall).toContain('studio-mcp is a tool for running a single command MCP server.');
+        expect(helpCall).toContain('-h, --help - Show this help message and exit.');
+        expect(helpCall).toContain('--debug - Print debug logs to stderr to diagnose MCP server issues.');
+        expect(helpCall).toContain('the command starts at the first non-flag argument:');
+        expect(helpCall).toContain('<command> - the shell command to run.');
+        expect(helpCall).toContain('arguments can be templated as their own shellword or as part of a shellword:');
+        expect(helpCall).toContain('"{{req # required arg}}" - tell the LLM about a required arg named \'req\'.');
+        expect(helpCall).toContain('"[args... # array of args]" - tell the LLM about an optional array of args named \'args\'.');
+        expect(helpCall).toContain('"[opt # optional string]" - a optional string arg named \'opt\' (not in example).');
+        expect(helpCall).toContain('"https://en.wikipedia.org/wiki/{{wiki_page_name}}" - an example partially templated words.');
+        expect(helpCall).toContain('Example:');
+        expect(helpCall).toContain('studio-mcp say -v siri "{{speech # a concise phrase to say outloud to the user}}"');
+      });
     });
   });
 
@@ -71,7 +143,7 @@ describe('Studio', () => {
     it('handles empty argv error', async () => {
       await Studio.serve([]);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Studio error: Usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Studio error: usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -107,6 +179,20 @@ describe('Studio', () => {
       expect(mockServe).toHaveBeenCalled();
       expect(consoleErrorSpy).not.toHaveBeenCalled();
       expect(processExitSpy).not.toHaveBeenCalled();
+    });
+
+    it('handles help flag in static serve method', async () => {
+      // Mock console.info and process.exit for help functionality
+      const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
+      const processExitSpy = jest.spyOn(process, 'exit').mockImplementation();
+
+      await Studio.serve(['--help']);
+
+      expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('usage: studio-mcp [--debug] <command>'));
+      expect(processExitSpy).toHaveBeenCalledWith(0);
+
+      consoleInfoSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
   });
 });

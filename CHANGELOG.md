@@ -13,4 +13,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Blueprint templating
 - Support for required `{{name}}` and optional `[name]` string arguments
 - Support for array arguments `[name...]`
+- Support for `--help` and `--debug` flags to studio-mcp itself.
 - CLI interface compatible with Claude Desktop, Cursor, and other MCP clients

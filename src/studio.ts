@@ -13,14 +13,45 @@ export class Studio {
   private debugMode: boolean = false;
 
   constructor(argv: string[]) {
-        if (argv.length === 0) {
-      throw new Error('Usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
+    if (argv.length === 0) {
+      throw new Error('usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
     }
 
     const { flags, commandArgs } = this.parseArguments(argv);
 
+    if (flags.includes('--help') || flags.includes('-h')) {
+      const helpText = `
+usage: studio-mcp [--debug] <command> --example "{{req # required arg}}" "[args... # array of args]"
+
+studio-mcp is a tool for running a single command MCP server.
+
+  -h, --help - Show this help message and exit.
+  --debug - Print debug logs to stderr to diagnose MCP server issues.
+
+the command starts at the first non-flag argument:
+
+  <command> - the shell command to run.
+  --example - in the example, this includes the literal argument '--example' is part of the command.
+              literal args any shell word.
+
+arguments can be templated as their own shellword or as part of a shellword:
+
+  "{{req # required arg}}" - tell the LLM about a required arg named 'req'.
+  "[args... # array of args]" - tell the LLM about an optional array of args named 'args'.
+  "[opt # optional string]" - a optional string arg named 'opt' (not in example).
+  "https://en.wikipedia.org/wiki/{{wiki_page_name}}" - an example partially templated words.
+
+Example:
+  studio-mcp say -v siri "{{speech # a concise phrase to say outloud to the user}}"
+`.trim();
+
+      console.info(helpText);
+      process.exit(0);
+      return; // This won't be reached in production but helps with testing
+    }
+
     if (commandArgs.length === 0) {
-      throw new Error('Usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
+      throw new Error('usage: studio-mcp <command> --example "{{req # required arg}}" "[args... # array of args]"');
     }
 
     this.debugMode = flags.includes('--debug');
