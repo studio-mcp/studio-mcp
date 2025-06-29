@@ -35,15 +35,18 @@ $ npx -y studio-mcp command "{{ required_argument # Description of argument }}" 
 
 You can run almost any command. Since you're just renting the place, please be a good tenant and don't `rm -rf` anything.
 
-## Install
+## Move-In(stall)
 
-If you don't have a modern node installed as your system node:
+These install instructions are like my lease agreement: full of gotchas.
+Have your lawyer read it over. You do have a lawyer right? 
+
+If you're lucky, you can just install it:
 
 ```sh
-brew install node
+npm install -g studio-mcp
 ```
 
-After that, you can install this as an mcp server:
+After that, you'll be lucky if you can get this running without a full path somewhere. this as an mcp server:
 
 ### Claude Desktop
 
@@ -81,8 +84,6 @@ Add to your `.cursor/mcp.json`:
 }
 ```
 
-(this is a very useless example, but it will make sure it's working)
-
 ### VSCode
 
 ```json
@@ -104,24 +105,24 @@ Add to your `.cursor/mcp.json`:
 Studio uses blueprints (templates) to keep your studio tidy.
 
 ```bash
-studio-mcp rails generate "{{generator#A valid rails generator like scaffold, model}}" "[args...#Any additional args needed for the generator]"
+studio-mcp npx -y "{{node_pkg#A somewhat crazy thing to do}}" "[args...#Any additional args needed for pwning your system]"
 ```
 
-This creates a Studio server with two arguments: `generator` and `args`.
+This creates a Studio server with two arguments: `node_pkg` and `args`.
 Everything after the `#` will be used as the description for the LLM to understand.
 
 Blueprints use the format: `{{name # description}}` and `[name # description]` for string and array arguments.
 
 - `{{name}}`: Required string argument
 - `[name]`: Optional string argument
-- `[name...]`: Required array argument (spreads as multiple command line args)
-- `name`: The argument name that will be exposed in the MCP tool schema. May not contain spaces.
+- `[name...]`: Opyional array argument (spreads as multiple command line args)
+- `name`: The argument name that will be shown in the MCP tool schema. Only letter numbers and underscores (dashes become underscores, case-insensitive).
 - `description`: A description of what the argument should contain. May contain spaces.
 
 This is a simple studio, not one of those fancy 1 bedroom flats.
-Blueprint types, flags, validation??? The landlord will probably upgrade the place for free eventually... right?
+Blueprint types, flags, validation? The landlord will probably upgrade the place for free eventually... right?
 
-## Development
+## Utilities Included
 
 To build and test locally:
 
@@ -131,13 +132,13 @@ npm run build
 npm run dev -- echo "{{text#What to echo?}}"
 ```
 
-### Testing
+### Did something break?
 
-The project includes comprehensive tests covering:
-- Blueprint parsing and schema generation
-- Command execution and error handling
-- MCP protocol integration
-- Real-world usage scenarios
+The landlord definitely takes care of the place:
+- more than none tests
+- files! lots of 'em!
+- maybe even some test coverage
+- you still need proof of renters insurance
 
 ```bash
 npm test              # Run all tests
@@ -145,16 +146,13 @@ npm run test:watch    # Run tests in watch mode
 npm run test:coverage # Run tests with coverage report
 ```
 
-Test coverage is excellent with 87% statement coverage including:
-- 100% Blueprint functionality
-- 95% Tool execution logic
-- Full integration testing of MCP protocol
+Uncovered portions are the tenant's responsibility. (no one ever understand how hard it is for us landlords)
 
 ## Home Is Where You Make It
 
-This is your studio too. Bugs, features, ideas? Swing by the repo:
+This is your studio too. Bugs, bedbugs, features, ideas? Swing by the repo during open-house:
 
-🏠 https://github.com/martinemde/studio
+🏠 https://github.com/martinemde/studio-mcp
 
 ## Lease Terms: MIT
 
