@@ -174,8 +174,15 @@ func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) []string {
 			if isArray {
 				// Handle array expansion
 				if values, ok := params[varName]; ok {
+					// Handle both []string and []interface{} (from JSON)
 					if arr, ok := values.([]string); ok && len(arr) > 0 {
 						result = append(result, arr...)
+					} else if arr, ok := values.([]interface{}); ok && len(arr) > 0 {
+						for _, item := range arr {
+							if str, ok := item.(string); ok {
+								result = append(result, str)
+							}
+						}
 					}
 				}
 			} else {
