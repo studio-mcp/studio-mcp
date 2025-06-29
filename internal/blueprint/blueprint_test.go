@@ -414,3 +414,50 @@ func TestBlueprint_BuildCommandArgs(t *testing.T) {
 		assert.Equal(t, []string{"echo", "hello"}, args)
 	})
 }
+
+func TestBlueprint_EnhancedOptionalParsing(t *testing.T) {
+	t.Run("parses optional argument with custom description", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "[name#Person's name]"})
+
+		assert.Equal(t, "echo", bp.BaseCommand)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"name": {
+					Type:        "string",
+					Description: "Person's name",
+				},
+			},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses array argument with custom description", func(t *testing.T) {
+		bp := FromArgs([]string{"ls", "[files...#Files to list]"})
+
+		assert.Equal(t, "ls", bp.BaseCommand)
+		assert.Equal(t, &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"files": {
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: "Files to list",
+				},
+			},
+			Required: []string{"files"},
+		}, bp.InputSchema)
+	})
+
+	t.Run("parses mixed optional arguments with and without descriptions", func(t *testing.T) {
+		bp := FromArgs([]string{"cmd", "[required]", "[optional#Custom desc]"})
+
+		assert.Equal(t, "cmd", bp.BaseCommand)
+
+		// Check properties
+		assert.Equal(t, "string", bp.InputSchema.Properties["required"].Type)
+		assert.Equal(t, "", bp.InputSchema.Properties["required"].Description)
+
+		assert.Equal(t, "string", bp.InputSchema.Properties["optional"].Type)
+		assert.Equal(t, "Custom desc", bp.InputSchema.Properties["optional"].Description)
+	})
+}

@@ -10,8 +10,8 @@ import (
 var (
 	// Matches {{variable}} or {{variable#description}}
 	templateRegex = regexp.MustCompile(`\{\{([^#}]+)(?:#([^}]+))?\}\}`)
-	// Matches [variable] or [variable...]
-	optionalRegex = regexp.MustCompile(`^\[([^.\]]+)(\.\.\.)?]$`)
+	// Matches [variable] or [variable#description] or [variable...] or [variable...#description]
+	optionalRegex = regexp.MustCompile(`^\[([^#.\]]+)(?:\.\.\.)?(?:#([^.\]]+))?(\.\.\.)?\]$`)
 )
 
 // Blueprint represents a parsed command template
@@ -58,31 +58,42 @@ func FromArgs(args []string) *Blueprint {
 	for i := 1; i < len(args); i++ {
 		arg := args[i]
 
-		// Check for optional pattern [variable] or [variable...]
+		// Check for optional pattern [variable] or [variable...] or [variable#description] or [variable...#description]
 		if matches := optionalRegex.FindStringSubmatch(arg); matches != nil {
 			varName := strings.ReplaceAll(matches[1], "-", "_")
-			isArray := matches[2] == "..."
+			description := ""
+			if len(matches) > 2 && matches[2] != "" {
+				description = strings.TrimSpace(matches[2])
+			}
+			isArray := strings.Contains(arg, "...")
 
 			tmpl := template{
-				argIndex:   i,
-				name:       varName,
-				isArray:    isArray,
-				isOptional: true,
+				argIndex:    i,
+				name:        varName,
+				isArray:     isArray,
+				isOptional:  true,
+				description: description,
 			}
 
 			if isArray {
-				tmpl.description = "Additional command line arguments"
+				if description == "" {
+					description = "Additional command line arguments"
+				}
 				properties[varName] = &jsonschema.Schema{
 					Type:        "array",
 					Items:       &jsonschema.Schema{Type: "string"},
-					Description: tmpl.description,
+					Description: description,
 				}
 				required = append(required, varName)
 				descriptionParts = append(descriptionParts, "["+varName+"...]")
 			} else {
-				properties[varName] = &jsonschema.Schema{
+				prop := &jsonschema.Schema{
 					Type: "string",
 				}
+				if description != "" {
+					prop.Description = description
+				}
+				properties[varName] = prop
 				descriptionParts = append(descriptionParts, "["+varName+"]")
 			}
 
@@ -169,7 +180,7 @@ func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) []string {
 		// Check if this is an array placeholder
 		if matches := optionalRegex.FindStringSubmatch(arg); matches != nil {
 			varName := strings.ReplaceAll(matches[1], "-", "_")
-			isArray := matches[2] == "..."
+			isArray := strings.Contains(arg, "...")
 
 			if isArray {
 				// Handle array expansion
