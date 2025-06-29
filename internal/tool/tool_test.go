@@ -1,6 +1,7 @@
 package tool
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -125,6 +126,20 @@ func TestTool_CreateToolFunction(t *testing.T) {
 		assert.Equal(t, "", result.Content[0]["text"])
 		assert.True(t, result.IsError)
 	})
+
+	t.Run("handles blueprint validation errors", func(t *testing.T) {
+		blueprint := &MockBlueprintWithError{
+			err: fmt.Errorf("missing required parameter: name"),
+		}
+
+		fn := CreateToolFunction(blueprint)
+		result := fn(map[string]interface{}{})
+
+		assert.Len(t, result.Content, 1)
+		assert.Equal(t, "text", result.Content[0]["type"])
+		assert.Contains(t, result.Content[0]["text"], "Validation error: missing required parameter: name")
+		assert.True(t, result.IsError)
+	})
 }
 
 // MockBlueprint is a test helper that implements the Blueprint interface
@@ -132,6 +147,15 @@ type MockBlueprint struct {
 	commandArgs []string
 }
 
-func (m *MockBlueprint) BuildCommandArgs(args map[string]interface{}) []string {
-	return m.commandArgs
+func (m *MockBlueprint) BuildCommandArgs(args map[string]interface{}) ([]string, error) {
+	return m.commandArgs, nil
+}
+
+// MockBlueprintWithError is a test helper that returns an error
+type MockBlueprintWithError struct {
+	err error
+}
+
+func (m *MockBlueprintWithError) BuildCommandArgs(args map[string]interface{}) ([]string, error) {
+	return nil, m.err
 }

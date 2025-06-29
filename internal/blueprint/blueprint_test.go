@@ -247,153 +247,170 @@ func TestBlueprint_ToolDescription(t *testing.T) {
 func TestBlueprint_BuildCommandArgs(t *testing.T) {
 	t.Run("builds simple command without templates", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "hello", "world"})
-		args := bp.BuildCommandArgs(map[string]interface{}{})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "hello", "world"}, args)
 	})
 
 	t.Run("builds command with required template", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{message}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"message": "Hello World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Hello World"}, args)
 	})
 
 	t.Run("builds command with template in middle of arg", func(t *testing.T) {
 		bp := FromArgs([]string{"curl", "https://api.example.com/{{endpoint}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"endpoint": "users/123",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"curl", "https://api.example.com/users/123"}, args)
 	})
 
 	t.Run("builds command with multiple templates in one arg", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{greeting}} {{name}}!"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"greeting": "Hello",
 			"name":     "World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Hello World!"}, args)
 	})
 
 	t.Run("builds command with array argument", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "[files...]"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"files": []string{"file1.txt", "file2.txt", "file3.txt"},
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "file1.txt", "file2.txt", "file3.txt"}, args)
 	})
 
 	t.Run("builds command with empty array argument", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "prefix", "[files...]"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"files": []string{},
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "prefix"}, args)
 	})
 
 	t.Run("builds command with optional string argument provided", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "hello", "[name]"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"name": "world",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "hello", "world"}, args)
 	})
 
 	t.Run("builds command with optional string argument omitted", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "hello", "[name]"})
-		args := bp.BuildCommandArgs(map[string]interface{}{})
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "hello"}, args)
 	})
 
 	t.Run("builds command with blueprint arguments containing spaces", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{text#text to echo}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"text": "Hello World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Hello World"}, args)
 	})
 
 	t.Run("builds command with mixed blueprint with and without descriptions", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{greeting#The greeting}}", "{{name}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"greeting": "Hello",
 			"name":     "World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Hello", "World"}, args)
 	})
 
 	t.Run("builds command with blueprint arguments in mixed content", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "simon says {{text#text for simon to say}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"text": "Hello World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "simon says Hello World"}, args)
 	})
 
 	t.Run("builds command with blueprint arguments containing special shell characters", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{text#text to echo}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"text": "Hello & World; echo pwned",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Hello & World; echo pwned"}, args)
 	})
 
 	t.Run("builds command with blueprint in middle of argument", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "--message={{text#message content}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"text": "Hello World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "--message=Hello World"}, args)
 	})
 
 	t.Run("builds command with blueprint with prefix and suffix", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "prefix-{{text#middle part}}-suffix"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"text": "Hello World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "prefix-Hello World-suffix"}, args)
 	})
 
 	t.Run("builds command with mixed blueprint and non-blueprint arguments", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "static", "{{dynamic#dynamic content}}", "more-static"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"dynamic": "Hello World",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "static", "Hello World", "more-static"}, args)
 	})
 
 	t.Run("preserves shell safety with complex blueprint values", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "Result: {{text#text content}}"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"text": "$(echo 'dangerous'); echo 'safe'",
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Result: $(echo 'dangerous'); echo 'safe'"}, args)
 	})
 
 	t.Run("builds command with mixed string and array arguments", func(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{prefix#Prefix text}}", "[files...]"})
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"prefix": "Files:",
 			"files":  []string{"a.txt", "b.txt"},
 		})
 
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "Files:", "a.txt", "b.txt"}, args)
 	})
 
@@ -401,16 +418,18 @@ func TestBlueprint_BuildCommandArgs(t *testing.T) {
 		bp := FromArgs([]string{"echo", "{{required#Required text}}", "[optional]"})
 
 		// With both provided
-		args := bp.BuildCommandArgs(map[string]interface{}{
+		args, err := bp.BuildCommandArgs(map[string]interface{}{
 			"required": "hello",
 			"optional": "world",
 		})
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "hello", "world"}, args)
 
 		// With only required provided
-		args = bp.BuildCommandArgs(map[string]interface{}{
+		args, err = bp.BuildCommandArgs(map[string]interface{}{
 			"required": "hello",
 		})
+		assert.NoError(t, err)
 		assert.Equal(t, []string{"echo", "hello"}, args)
 	})
 }
@@ -459,5 +478,31 @@ func TestBlueprint_EnhancedOptionalParsing(t *testing.T) {
 
 		assert.Equal(t, "string", bp.InputSchema.Properties["optional"].Type)
 		assert.Equal(t, "Custom desc", bp.InputSchema.Properties["optional"].Description)
+	})
+}
+
+func TestBlueprint_TemplateValidation(t *testing.T) {
+	t.Run("validates missing required parameters", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{required}}"})
+		_, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.Error(t, err) // Should error on missing required param
+	})
+
+	t.Run("validates parameter type mismatches", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "[files...]"})
+		_, err := bp.BuildCommandArgs(map[string]interface{}{
+			"files": "not-an-array", // Should be []string
+		})
+		assert.Error(t, err)
+	})
+}
+
+func TestBlueprint_EnhancedTemplateProcessing(t *testing.T) {
+	t.Run("handles malformed template syntax", func(t *testing.T) {
+		bp := FromArgs([]string{"echo", "{{incomplete"})
+		// Should ignore any bad template syntax and print as normal text (always fallback on parse error to literal text)
+		args, err := bp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "{{incomplete"}, args)
 	})
 }

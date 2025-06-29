@@ -1,6 +1,7 @@
 package blueprint
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -164,7 +165,31 @@ func FromArgs(args []string) *Blueprint {
 }
 
 // BuildCommandArgs builds the actual command arguments from the template
-func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) []string {
+func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) ([]string, error) {
+	// Validate required parameters
+	for _, required := range bp.InputSchema.Required {
+		if _, exists := params[required]; !exists {
+			return nil, fmt.Errorf("missing required parameter: %s", required)
+		}
+	}
+
+	// Validate parameter types
+	for name, param := range params {
+		if schema, exists := bp.InputSchema.Properties[name]; exists {
+			if schema.Type == "array" {
+				// Check if it's an array type
+				switch v := param.(type) {
+				case []string:
+					// Valid
+				case []interface{}:
+					// Valid (from JSON)
+				default:
+					return nil, fmt.Errorf("parameter '%s' must be an array, got %T", name, v)
+				}
+			}
+		}
+	}
+
 	result := []string{bp.BaseCommand}
 
 	// Track which args to skip (for array expansions)
@@ -228,7 +253,7 @@ func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) []string {
 		result = append(result, processedArg)
 	}
 
-	return result
+	return result, nil
 }
 
 func contains(slice []string, item string) bool {

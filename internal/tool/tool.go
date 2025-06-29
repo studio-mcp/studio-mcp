@@ -22,7 +22,7 @@ type ToolResult struct {
 
 // Blueprint interface defines what we need from a blueprint
 type Blueprint interface {
-	BuildCommandArgs(args map[string]interface{}) []string
+	BuildCommandArgs(args map[string]interface{}) ([]string, error)
 }
 
 // ToolFunction is the function signature for MCP tools
@@ -116,7 +116,17 @@ func CreateToolFunction(blueprint Blueprint) ToolFunction {
 	return func(args map[string]interface{}) ToolResult {
 		debug("Tool called with args: %v", args)
 
-		fullCommand := blueprint.BuildCommandArgs(args)
+		fullCommand, err := blueprint.BuildCommandArgs(args)
+		if err != nil {
+			// Validation error - return immediately
+			return ToolResult{
+				Content: []map[string]interface{}{
+					{"type": "text", "text": fmt.Sprintf("Validation error: %s", err.Error())},
+				},
+				IsError: true,
+			}
+		}
+
 		debug("Built command: %s", strings.Join(fullCommand, " "))
 
 		// Execute the command
