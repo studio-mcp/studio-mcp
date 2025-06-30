@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-// Result represents the result of executing a command
-type Result struct {
-	Output  string
-	Success bool
-}
-
 // ToolResult represents the result returned to MCP
 type ToolResult struct {
 	Content []map[string]interface{} `json:"content"`
