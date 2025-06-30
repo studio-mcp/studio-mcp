@@ -41,3 +41,18 @@ type Blueprint struct {
 	InputSchema     *jsonschema.Schema
 	ShellWords      [][]Token // Tokenized shell words
 }
+
+// GetToolName returns the tool name
+func (bp *Blueprint) GetToolName() string {
+	return bp.ToolName
+}
+
+// GetToolDescription returns the tool description
+func (bp *Blueprint) GetToolDescription() string {
+	return bp.ToolDescription
+}
+
+// GetInputSchema returns the input schema
+func (bp *Blueprint) GetInputSchema() interface{} {
+	return bp.InputSchema
+}

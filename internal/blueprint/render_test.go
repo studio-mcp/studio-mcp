@@ -350,7 +350,7 @@ func TestBlueprint_BuildCommandArgsWithBooleanFlags(t *testing.T) {
 
 func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	t.Run("builds simple command without templates", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "hello", "world"})
+		bp, err := FromArgs([]string{"echo", "hello", "world"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{})
@@ -359,7 +359,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with required template", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "{{message}}"})
+		bp, err := FromArgs([]string{"echo", "{{message}}"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -370,7 +370,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with template in middle of arg", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"curl", "https://api.example.com/{{endpoint}}"})
+		bp, err := FromArgs([]string{"curl", "https://api.example.com/{{endpoint}}"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -381,7 +381,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with multiple templates in one arg", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "{{greeting}} {{name}}!"})
+		bp, err := FromArgs([]string{"echo", "{{greeting}} {{name}}!"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -393,7 +393,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with optional field provided", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "hello", "[name]"})
+		bp, err := FromArgs([]string{"echo", "hello", "[name]"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -404,7 +404,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with optional field omitted", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "hello", "[name]"})
+		bp, err := FromArgs([]string{"echo", "hello", "[name]"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{})
@@ -413,7 +413,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with boolean flag enabled", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"ls", "[--verbose]"})
+		bp, err := FromArgs([]string{"ls", "[--verbose]"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -424,7 +424,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with boolean flag disabled", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"ls", "[--verbose]"})
+		bp, err := FromArgs([]string{"ls", "[--verbose]"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -435,7 +435,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("builds command with array argument", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "[files...]"})
+		bp, err := FromArgs([]string{"echo", "[files...]"})
 		require.NoError(t, err)
 
 		args, err := bp.BuildCommandArgs(map[string]interface{}{
@@ -446,7 +446,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("handles dash-underscore equivalence", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "{{my-var}}", "[--my-flag]"})
+		bp, err := FromArgs([]string{"echo", "{{my-var}}", "[--my-flag]"})
 		require.NoError(t, err)
 
 		// Should accept both dash and underscore versions
@@ -459,7 +459,7 @@ func TestBlueprint_BuildCommandArgsTokenized(t *testing.T) {
 	})
 
 	t.Run("returns error for missing required parameter", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "{{message}}"})
+		bp, err := FromArgs([]string{"echo", "{{message}}"})
 		require.NoError(t, err)
 
 		_, err = bp.BuildCommandArgs(map[string]interface{}{})

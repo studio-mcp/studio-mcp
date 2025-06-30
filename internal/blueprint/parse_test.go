@@ -629,9 +629,9 @@ func TestBlueprint_FromArgsErrors(t *testing.T) {
 	})
 }
 
-func TestBlueprint_TokenizeFromArgs(t *testing.T) {
+func TestBlueprint_FromArgsTokenization(t *testing.T) {
 	t.Run("tokenizes simple command without templates", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "hello"})
+		bp, err := FromArgs([]string{"echo", "hello"})
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
@@ -645,7 +645,7 @@ func TestBlueprint_TokenizeFromArgs(t *testing.T) {
 	})
 
 	t.Run("tokenizes command with simple template", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "{{text}}"})
+		bp, err := FromArgs([]string{"echo", "{{text}}"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
@@ -656,7 +656,7 @@ func TestBlueprint_TokenizeFromArgs(t *testing.T) {
 	})
 
 	t.Run("tokenizes command with template and description", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "{{text#message to echo}}"})
+		bp, err := FromArgs([]string{"echo", "{{text#message to echo}}"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
@@ -667,7 +667,7 @@ func TestBlueprint_TokenizeFromArgs(t *testing.T) {
 	})
 
 	t.Run("tokenizes command with mixed text and template", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "prefix{{text#desc}}suffix"})
+		bp, err := FromArgs([]string{"echo", "prefix{{text#desc}}suffix"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
@@ -682,7 +682,7 @@ func TestBlueprint_TokenizeFromArgs(t *testing.T) {
 	})
 
 	t.Run("tokenizes command with optional field", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "[optional]"})
+		bp, err := FromArgs([]string{"echo", "[optional]"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
@@ -693,7 +693,7 @@ func TestBlueprint_TokenizeFromArgs(t *testing.T) {
 	})
 
 	t.Run("tokenizes command with optional field and description", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"echo", "[optional#optional text]"})
+		bp, err := FromArgs([]string{"echo", "[optional#optional text]"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
@@ -704,7 +704,7 @@ func TestBlueprint_TokenizeFromArgs(t *testing.T) {
 	})
 
 	t.Run("tokenizes complex mixed command", func(t *testing.T) {
-		bp, err := TokenizeFromArgs([]string{"curl", "https://api.com/{{endpoint#API endpoint}}", "[--verbose]"})
+		bp, err := FromArgs([]string{"curl", "https://api.com/{{endpoint#API endpoint}}", "[--verbose]"})
 		require.NoError(t, err)
 
 		expected := [][]Token{

@@ -42,13 +42,8 @@ func (s *Studio) Serve() error {
 	// Create server with version from build
 	server := mcp.NewServer("studio-mcp", s.Version, nil)
 
-	// Add the tool to the server using NewServerTool with schema directly from blueprint
-	serverTool := mcp.NewServerTool(
-		s.Blueprint.ToolName,
-		s.Blueprint.ToolDescription,
-		tool.CreateToolFunction(s.Blueprint),
-		mcp.Input(mcp.Schema(s.Blueprint.InputSchema)),
-	)
+	// Add the tool to the server using CreateServerTool from tool package
+	serverTool := tool.CreateServerTool(s.Blueprint)
 
 	server.AddTools(serverTool)
 

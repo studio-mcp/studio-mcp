@@ -8,12 +8,16 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // Blueprint interface defines what we need from a blueprint
 type Blueprint interface {
 	BuildCommandArgs(args map[string]interface{}) ([]string, error)
+	GetToolName() string
+	GetToolDescription() string
+	GetInputSchema() interface{}
 }
 
 var debugMode bool
@@ -87,6 +91,22 @@ func CreateToolFunction(blueprint Blueprint) mcp.ToolHandlerFor[map[string]any, 
 
 		return createToolResult(output, isError), nil
 	}
+}
+
+// CreateServerTool creates a complete MCP server tool from a blueprint
+func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
+	schema, ok := blueprint.GetInputSchema().(*jsonschema.Schema)
+	if !ok {
+		// This should never happen if the Blueprint interface is implemented correctly
+		panic("blueprint.GetInputSchema() must return *jsonschema.Schema")
+	}
+
+	return mcp.NewServerTool(
+		blueprint.GetToolName(),
+		blueprint.GetToolDescription(),
+		CreateToolFunction(blueprint),
+		mcp.Input(mcp.Schema(schema)),
+	)
 }
 
 func createToolResult(output string, isError bool) *mcp.CallToolResultFor[map[string]any] {

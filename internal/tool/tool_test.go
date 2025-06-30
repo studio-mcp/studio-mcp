@@ -170,6 +170,18 @@ func (m *MockBlueprint) BuildCommandArgs(args map[string]interface{}) ([]string,
 	return m.commandArgs, nil
 }
 
+func (m *MockBlueprint) GetToolName() string {
+	return "mock_tool"
+}
+
+func (m *MockBlueprint) GetToolDescription() string {
+	return "Mock tool for testing"
+}
+
+func (m *MockBlueprint) GetInputSchema() interface{} {
+	return &struct{}{} // Empty schema for testing
+}
+
 // MockBlueprintWithError is a test helper that returns an error
 type MockBlueprintWithError struct {
 	err error
@@ -177,4 +189,16 @@ type MockBlueprintWithError struct {
 
 func (m *MockBlueprintWithError) BuildCommandArgs(args map[string]interface{}) ([]string, error) {
 	return nil, m.err
+}
+
+func (m *MockBlueprintWithError) GetToolName() string {
+	return "mock_error_tool"
+}
+
+func (m *MockBlueprintWithError) GetToolDescription() string {
+	return "Mock error tool for testing"
+}
+
+func (m *MockBlueprintWithError) GetInputSchema() interface{} {
+	return &struct{}{} // Empty schema for testing
 }

@@ -7,14 +7,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 )
 
-// FromArgs creates a new Blueprint from command arguments
+// FromArgs creates a new Blueprint from command arguments using tokenization
 func FromArgs(args []string) (*Blueprint, error) {
-	// Use tokenization directly
-	return TokenizeFromArgs(args)
-}
-
-// TokenizeFromArgs creates a new Blueprint from command arguments using tokenization
-func TokenizeFromArgs(args []string) (*Blueprint, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("cannot create blueprint: no command provided")
 	}
