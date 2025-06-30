@@ -1,6 +1,6 @@
 {
   "name": "studio-mcp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Make any CLI command an MCP server",
   "bin": {
     "studio-mcp": "./run.js"
