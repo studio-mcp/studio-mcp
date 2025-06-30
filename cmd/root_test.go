@@ -94,13 +94,13 @@ func TestVersionFlagOutput(t *testing.T) {
 
 func TestErrorCases(t *testing.T) {
 	t.Run("shows error with no arguments", func(t *testing.T) {
-		buf, err := testSetup()
+		_, err := testSetup()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
 	})
 
 	t.Run("errors when only flag is --debug", func(t *testing.T) {
-		buf, err := testSetup("--debug")
+		_, err := testSetup("--debug")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
 	})
