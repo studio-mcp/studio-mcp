@@ -36,15 +36,14 @@ func (t FieldToken) String() string {
 // Blueprint represents a parsed command template
 type Blueprint struct {
 	BaseCommand     string
-	ToolName        string
 	ToolDescription string
 	InputSchema     *jsonschema.Schema
 	ShellWords      [][]Token // Tokenized shell words
 }
 
-// GetToolName returns the tool name
-func (bp *Blueprint) GetToolName() string {
-	return bp.ToolName
+// GetBaseCommand returns the base command
+func (bp *Blueprint) GetBaseCommand() string {
+	return bp.BaseCommand
 }
 
 // GetToolDescription returns the tool description

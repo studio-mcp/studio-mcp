@@ -14,7 +14,6 @@ func TestBlueprint_ParseSimpleCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git", bp.ToolName)
 		assert.Equal(t, "Run the shell command `git status`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type:       "object",
@@ -47,7 +46,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "curl", bp.BaseCommand)
-		assert.Equal(t, "curl", bp.ToolName)
 		assert.Equal(t, "Run the shell command `curl https://en.m.wikipedia.org/wiki/{{page}}`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -98,7 +96,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command", bp.ToolName)
 		assert.Equal(t, "Run the shell command `command {{arg1}} [arg2]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -120,7 +117,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo {{text}} {{text}}`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -139,7 +135,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo [files...]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -159,7 +154,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls", bp.ToolName)
 		assert.Equal(t, "Run the shell command `ls [paths...]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -179,7 +173,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo [optional]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -196,7 +189,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo [has_dashes]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -213,7 +205,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command", bp.ToolName)
 		assert.Equal(t, "Run the shell command `command {{flag}} [files...]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -230,14 +221,6 @@ func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
 			},
 			Required: []string{"flag", "files"},
 		}, bp.InputSchema)
-	})
-}
-
-func TestBlueprint_ToolName(t *testing.T) {
-	t.Run("converts command to valid tool name", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git-flow"})
-		require.NoError(t, err)
-		assert.Equal(t, "git_flow", bp.ToolName)
 	})
 }
 
@@ -317,7 +300,6 @@ func TestBlueprint_ParseBooleanFlags(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls", bp.ToolName)
 		assert.Equal(t, "Run the shell command `ls [-f]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -335,7 +317,6 @@ func TestBlueprint_ParseBooleanFlags(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls", bp.ToolName)
 		assert.Equal(t, "Run the shell command `ls [--force]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -353,7 +334,6 @@ func TestBlueprint_ParseBooleanFlags(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "rm", bp.BaseCommand)
-		assert.Equal(t, "rm", bp.ToolName)
 		assert.Equal(t, "Run the shell command `rm [-f]`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -371,7 +351,6 @@ func TestBlueprint_ParseBooleanFlags(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "cp", bp.BaseCommand)
-		assert.Equal(t, "cp", bp.ToolName)
 		assert.Equal(t, "Run the shell command `cp [-r] {{source}} {{dest}}`", bp.ToolDescription)
 		assert.Equal(t, &jsonschema.Schema{
 			Type: "object",
@@ -398,7 +377,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git", bp.ToolName)
 		assert.Equal(t, "Run the shell command `git status`", bp.ToolDescription)
 		assert.Empty(t, bp.InputSchema.Properties)
 	})
@@ -408,7 +386,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git", bp.ToolName)
 		assert.Equal(t, "Run the shell command `git status [args...]`", bp.ToolDescription)
 
 		// Check that args parameter exists and is required
@@ -422,7 +399,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "curl", bp.BaseCommand)
-		assert.Equal(t, "curl", bp.ToolName)
 		assert.Equal(t, "Run the shell command `curl https://en.m.wikipedia.org/wiki/{{page}}`", bp.ToolDescription)
 
 		// Check that page parameter exists and is required
@@ -437,7 +413,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo {{text}}`", bp.ToolDescription)
 
 		// Check that text parameter exists and is required
@@ -451,7 +426,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "curl", bp.BaseCommand)
-		assert.Equal(t, "curl", bp.ToolName)
 		assert.Equal(t, "Run the shell command `curl https://en.m.wikipedia.org/wiki/{{page }}`", bp.ToolDescription)
 
 		// Check that page parameter exists and is required
@@ -466,7 +440,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command", bp.ToolName)
 		assert.Equal(t, "Run the shell command `command {{arg1}} [arg2]`", bp.ToolDescription)
 
 		// Check that arg1 parameter exists and is required
@@ -486,7 +459,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 
 		// Check that text parameter exists with the explicit description
 		assert.Contains(t, bp.InputSchema.Properties, "text")
@@ -500,7 +472,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo [files...]`", bp.ToolDescription)
 
 		// Check that files parameter exists and is required array
@@ -515,7 +486,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls", bp.ToolName)
 		assert.Equal(t, "Run the shell command `ls [paths...]`", bp.ToolDescription)
 
 		// Check that paths parameter exists and is required array
@@ -530,7 +500,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 		assert.Equal(t, "Run the shell command `echo [optional]`", bp.ToolDescription)
 
 		// Check that optional parameter exists and is not required
@@ -544,7 +513,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 
 		// Check that has_dashes parameter exists (dashes converted to underscores)
 		assert.Contains(t, bp.InputSchema.Properties, "has_dashes")
@@ -557,7 +525,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command", bp.ToolName)
 		assert.Equal(t, "Run the shell command `command {{flag}} [files...]`", bp.ToolDescription)
 
 		// Check that flag parameter exists and is required
@@ -578,7 +545,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "git-flow", bp.BaseCommand)
-		assert.Equal(t, "git_flow", bp.ToolName)
 	})
 
 	t.Run("handles command with no additional arguments", func(t *testing.T) {
@@ -586,7 +552,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git", bp.ToolName)
 		assert.Equal(t, "Run the shell command `git`", bp.ToolDescription)
 	})
 
@@ -595,7 +560,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git", bp.ToolName)
 		assert.Contains(t, bp.InputSchema.Required, "args")
 	})
 
@@ -604,7 +568,6 @@ func TestBlueprint_FromArgs(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "rails", bp.BaseCommand)
-		assert.Equal(t, "rails", bp.ToolName)
 		assert.Contains(t, bp.InputSchema.Required, "generator")
 	})
 }
@@ -635,7 +598,6 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo", bp.ToolName)
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},

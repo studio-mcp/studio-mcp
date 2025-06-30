@@ -15,7 +15,7 @@ import (
 // Blueprint interface defines what we need from a blueprint
 type Blueprint interface {
 	BuildCommandArgs(args map[string]interface{}) ([]string, error)
-	GetToolName() string
+	GetBaseCommand() string
 	GetToolDescription() string
 	GetInputSchema() interface{}
 }
@@ -93,6 +93,11 @@ func CreateToolFunction(blueprint Blueprint) mcp.ToolHandlerFor[map[string]any, 
 	}
 }
 
+// GenerateToolName generates a tool name from a base command by replacing dashes with underscores
+func GenerateToolName(baseCommand string) string {
+	return strings.ReplaceAll(baseCommand, "-", "_")
+}
+
 // CreateServerTool creates a complete MCP server tool from a blueprint
 func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
 	schema, ok := blueprint.GetInputSchema().(*jsonschema.Schema)
@@ -102,7 +107,7 @@ func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
 	}
 
 	return mcp.NewServerTool(
-		blueprint.GetToolName(),
+		GenerateToolName(blueprint.GetBaseCommand()),
 		blueprint.GetToolDescription(),
 		CreateToolFunction(blueprint),
 		mcp.Input(mcp.Schema(schema)),

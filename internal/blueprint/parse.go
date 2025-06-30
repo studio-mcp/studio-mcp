@@ -19,7 +19,6 @@ func FromArgs(args []string) (*Blueprint, error) {
 
 	bp := &Blueprint{
 		BaseCommand: args[0],
-		ToolName:    strings.ReplaceAll(args[0], "-", "_"),
 		ShellWords:  make([][]Token, len(args)),
 		InputSchema: &jsonschema.Schema{
 			Type:       "object",

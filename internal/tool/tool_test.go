@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 )
@@ -161,6 +162,42 @@ func TestTool_CreateToolFunction(t *testing.T) {
 	}
 }
 
+func TestTool_GenerateToolName(t *testing.T) {
+	tests := []struct {
+		name        string
+		baseCommand string
+		expected    string
+	}{
+		{
+			name:        "simple command without dashes",
+			baseCommand: "git",
+			expected:    "git",
+		},
+		{
+			name:        "command with single dash",
+			baseCommand: "git-flow",
+			expected:    "git_flow",
+		},
+		{
+			name:        "command with multiple dashes",
+			baseCommand: "my-long-command-name",
+			expected:    "my_long_command_name",
+		},
+		{
+			name:        "command with no changes needed",
+			baseCommand: "simple_command",
+			expected:    "simple_command",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GenerateToolName(tt.baseCommand)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 // MockBlueprint is a test helper that implements the Blueprint interface
 type MockBlueprint struct {
 	commandArgs []string
@@ -170,8 +207,8 @@ func (m *MockBlueprint) BuildCommandArgs(args map[string]interface{}) ([]string,
 	return m.commandArgs, nil
 }
 
-func (m *MockBlueprint) GetToolName() string {
-	return "mock_tool"
+func (m *MockBlueprint) GetBaseCommand() string {
+	return "mock-tool"
 }
 
 func (m *MockBlueprint) GetToolDescription() string {
@@ -179,7 +216,10 @@ func (m *MockBlueprint) GetToolDescription() string {
 }
 
 func (m *MockBlueprint) GetInputSchema() interface{} {
-	return &struct{}{} // Empty schema for testing
+	return &jsonschema.Schema{
+		Type:       "object",
+		Properties: make(map[string]*jsonschema.Schema),
+	}
 }
 
 // MockBlueprintWithError is a test helper that returns an error
@@ -191,8 +231,8 @@ func (m *MockBlueprintWithError) BuildCommandArgs(args map[string]interface{}) (
 	return nil, m.err
 }
 
-func (m *MockBlueprintWithError) GetToolName() string {
-	return "mock_error_tool"
+func (m *MockBlueprintWithError) GetBaseCommand() string {
+	return "mock-error-tool"
 }
 
 func (m *MockBlueprintWithError) GetToolDescription() string {
@@ -200,5 +240,8 @@ func (m *MockBlueprintWithError) GetToolDescription() string {
 }
 
 func (m *MockBlueprintWithError) GetInputSchema() interface{} {
-	return &struct{}{} // Empty schema for testing
+	return &jsonschema.Schema{
+		Type:       "object",
+		Properties: make(map[string]*jsonschema.Schema),
+	}
 }
