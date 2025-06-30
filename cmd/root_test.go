@@ -7,14 +7,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// testSetup resets flags and returns an output buffer
+// resetRootCmd resets the root command for test isolation
+func resetRootCmd() {
+	rootCmd.ResetCommands()
+	rootCmd.ResetFlags()
+	debugFlag = false
+	versionFlag = false
+
+	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Print debug logs to stderr to diagnose MCP server issues")
+	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "Show version information")
+}
+
+// testSetup resets rootCmd and sets output buffers
 func testSetup(args ...string) (*bytes.Buffer, error) {
 	resetRootCmd()
 	var buf bytes.Buffer
 	rootCmd.SetOut(&buf)
 	rootCmd.SetErr(&buf)
 	rootCmd.SetArgs(args)
-	return &buf, rootCmd.Execute()
+	err := rootCmd.Execute()
+	return &buf, err
 }
 
 func TestHelpFlags(t *testing.T) {
