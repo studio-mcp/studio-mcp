@@ -47,68 +47,38 @@ func debug(format string, args ...interface{}) {
 	}
 }
 
-// Execute runs a command and returns the result
-func Execute(command string, args ...string) (*Result, error) {
+// Execute runs a command and returns trimmed combined stdout+stderr or an error
+func Execute(command string, args ...string) (string, error) {
 	debug("Executing command: %s %s", command, strings.Join(args, " "))
 
-	// Handle empty command
-	if command == "" || strings.TrimSpace(command) == "" {
-		errorMsg := "Studio error: Empty command provided"
-		debug("Error: %s", errorMsg)
-		return &Result{
-			Output:  errorMsg,
-			Success: false,
-		}, nil
+	if strings.TrimSpace(command) == "" {
+		return "", fmt.Errorf("Studio error: Empty command provided")
 	}
 
-	// Create the command
 	cmd := exec.Command(command, args...)
 
-	// Capture both stdout and stderr
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	var cmdout bytes.Buffer
+	cmd.Stdout = &cmdout
+	cmd.Stderr = &cmdout
 
-	// Run the command
 	err := cmd.Run()
+	output := strings.TrimSpace(cmdout.String())
 
-	// Combine stdout and stderr
-	output := stdout.String()
-	if stderr.String() != "" {
-		if output != "" {
-			output += "\n"
-		}
-		output += stderr.String()
-	}
-
-	// Check for execution errors
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); ok {
-			// Command executed but returned non-zero exit code
-			debug("Command completed with exit code: %d", cmd.ProcessState.ExitCode())
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			debug("Command completed with non-zero exit code: %d", exitErr.ExitCode())
 			debug("Final output length: %d chars", len(output))
-			return &Result{
-				Output:  strings.TrimSpace(output),
-				Success: false,
-			}, nil
+			return output, fmt.Errorf("command failed with exit code %d", exitErr.ExitCode())
 		}
-		// Command failed to execute (e.g., command not found)
-		errorMsg := fmt.Sprintf("Studio error: %s", err.Error())
-		debug("Spawn error: %s", errorMsg)
-		return &Result{
-			Output:  errorMsg,
-			Success: false,
-		}, nil
+		// Other execution errors (e.g., command not found)
+		debug("Spawn error: %s", err.Error())
+		return "", fmt.Errorf("Studio error: %w", err)
 	}
 
-	debug("Command completed with exit code: 0")
+	debug("Command completed successfully with exit code 0")
 	debug("Final output length: %d chars", len(output))
 
-	return &Result{
-		Output:  strings.TrimSpace(output),
-		Success: true,
-	}, nil
+	return output, nil
 }
 
 // CreateToolFunction creates a tool function for the given blueprint
@@ -118,7 +88,6 @@ func CreateToolFunction(blueprint Blueprint) ToolFunction {
 
 		fullCommand, err := blueprint.BuildCommandArgs(args)
 		if err != nil {
-			// Validation error - return immediately
 			return ToolResult{
 				Content: []map[string]interface{}{
 					{"type": "text", "text": fmt.Sprintf("Validation error: %s", err.Error())},
@@ -129,25 +98,18 @@ func CreateToolFunction(blueprint Blueprint) ToolFunction {
 
 		debug("Built command: %s", strings.Join(fullCommand, " "))
 
-		// Execute the command
-		result, err := Execute(fullCommand[0], fullCommand[1:]...)
-		if err != nil {
-			// Should not happen as Execute returns errors in Result
-			return ToolResult{
-				Content: []map[string]interface{}{
-					{"type": "text", "text": err.Error()},
-				},
-				IsError: true,
-			}
-		}
+		output, err := Execute(fullCommand[0], fullCommand[1:]...)
+		isError := err != nil
 
-		debug("Tool result - success: %v, output length: %d", result.Success, len(result.Output))
+		if err != nil {
+			debug("Execution error: %s", err)
+		}
 
 		return ToolResult{
 			Content: []map[string]interface{}{
-				{"type": "text", "text": result.Output},
+				{"type": "text", "text": strings.TrimSpace(output)},
 			},
-			IsError: !result.Success,
+			IsError: isError,
 		}
 	}
 }
