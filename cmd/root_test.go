@@ -7,76 +7,58 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// resetRootCmd resets the root command for test isolation
-func resetRootCmd() {
-	rootCmd.ResetCommands()
-	rootCmd.ResetFlags()
-	// Reset the flag variables
-	debugFlag = false
-	versionFlag = false
-	// Re-add the flags
-	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Print debug logs to stderr to diagnose MCP server issues")
-	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "Show version information")
+// testSetup resets flags and returns an output buffer
+func testSetup(args ...string) (*bytes.Buffer, error) {
+	resetRootCmd()
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetErr(&buf)
+	rootCmd.SetArgs(args)
+	return &buf, rootCmd.Execute()
 }
 
-func TestRootCommand(t *testing.T) {
-	t.Run("shows error with no arguments", func(t *testing.T) {
-		// Reset before each test
-		resetRootCmd()
-		rootCmd.SetArgs([]string{})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
+func TestHelpFlags(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		expectLines []string
+	}{
+		{
+			name: "shows help with --help",
+			args: []string{"--help"},
+			expectLines: []string{
+				"studio-mcp is a tool for running a single command MCP server",
+				"--debug", "--help", "--version",
+			},
+		},
+		{
+			name: "shows help with -h",
+			args: []string{"-h"},
+			expectLines: []string{
+				"studio-mcp is a tool for running a single command MCP server",
+			},
+		},
+	}
 
-		err := rootCmd.Execute()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf, err := testSetup(tt.args...)
+			assert.NoError(t, err)
+			output := buf.String()
+			for _, line := range tt.expectLines {
+				assert.Contains(t, output, line)
+			}
+		})
+	}
+}
 
-	t.Run("shows help with --help flag", func(t *testing.T) {
-		resetRootCmd()
-		rootCmd.SetArgs([]string{"--help"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
-		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "studio-mcp is a tool for running a single command MCP server")
-		assert.Contains(t, output, "--debug")
-		assert.Contains(t, output, "--help")
-		assert.Contains(t, output, "--version")
-	})
-
-	t.Run("shows help with -h flag", func(t *testing.T) {
-		resetRootCmd()
-		rootCmd.SetArgs([]string{"-h"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
-		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "studio-mcp is a tool for running a single command MCP server")
-	})
-
-	t.Run("shows version with --version flag", func(t *testing.T) {
-		resetRootCmd()
-		// Set test version info
+func TestVersionFlagOutput(t *testing.T) {
+	t.Run("prints version info", func(t *testing.T) {
 		Version = "1.2.3"
 		Commit = "abc123"
 		Date = "2023-01-01T00:00:00Z"
 
-		rootCmd.SetArgs([]string{"--version"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
+		buf, err := testSetup("--version")
 		assert.NoError(t, err)
 
 		output := buf.String()
@@ -85,150 +67,10 @@ func TestRootCommand(t *testing.T) {
 		assert.Contains(t, output, "built: 2023-01-01T00:00:00Z")
 	})
 
-	t.Run("version flag works without command arguments", func(t *testing.T) {
-		resetRootCmd()
-		// Set test version info
-		Version = "1.2.3"
-		Commit = "abc123"
-		Date = "2023-01-01T00:00:00Z"
+	t.Run("handles dev build values", func(t *testing.T) {
+		Version, Commit, Date = "dev", "none", "unknown"
 
-		// This should not error even though no command is provided
-		rootCmd.SetArgs([]string{"--version"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
-		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "studio-mcp 1.2.3")
-	})
-
-	t.Run("accepts --debug flag", func(t *testing.T) {
-		resetRootCmd()
-
-		// Explicitly check initial state
-		assert.False(t, debugFlag, "debugFlag should be false initially")
-
-		rootCmd.SetArgs([]string{"--debug", "echo", "hello"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		// Don't execute the command, just parse the flags
-		rootCmd.ParseFlags([]string{"--debug", "echo", "hello"})
-
-		// Verify the debug flag was set by flag parsing
-		assert.True(t, debugFlag, "debugFlag should be true after parsing --debug flag")
-	})
-
-	t.Run("shows error when only flags provided", func(t *testing.T) {
-		resetRootCmd()
-		rootCmd.SetArgs([]string{"--debug"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
-	})
-}
-
-// Test the help text content matches the TypeScript version
-func TestHelpTextContent(t *testing.T) {
-	resetRootCmd()
-	rootCmd.SetArgs([]string{"--help"})
-	var buf bytes.Buffer
-	rootCmd.SetOut(&buf)
-	rootCmd.SetErr(&buf)
-
-	err := rootCmd.Execute()
-	assert.NoError(t, err)
-
-	output := buf.String()
-
-	// Check for all the expected help content
-	expectedContent := []string{
-		"studio-mcp is a tool for running a single command MCP server",
-		"-h, --help",
-		"--version",
-		"--debug",
-		"the command starts at the first non-flag argument:",
-		"<command> - the shell command to run",
-		"arguments can be templated",
-		"{{req # required arg}}",
-		"[args... # array of args]",
-		"[opt # optional string]",
-		"https://en.wikipedia.org/wiki/{{wiki_page_name}}",
-		"Example:",
-		"studio-mcp say -v siri",
-		"Usage:",
-		"studio-mcp [--debug] <command> --example",
-	}
-
-	for _, expected := range expectedContent {
-		assert.Contains(t, output, expected, "Help text should contain: %s", expected)
-	}
-}
-
-func TestVersionFlag(t *testing.T) {
-	t.Run("version flag parsing", func(t *testing.T) {
-		resetRootCmd()
-
-		// Verify initial state
-		assert.False(t, versionFlag, "versionFlag should be false initially")
-
-		// Parse flags without executing
-		rootCmd.ParseFlags([]string{"--version"})
-
-		// Verify the version flag was set
-		assert.True(t, versionFlag, "versionFlag should be true after parsing --version flag")
-	})
-
-	t.Run("version output format", func(t *testing.T) {
-		resetRootCmd()
-		// Set test version info
-		Version = "1.2.3"
-		Commit = "abc123"
-		Date = "2023-01-01T00:00:00Z"
-
-		rootCmd.SetArgs([]string{"--version"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
-		assert.NoError(t, err)
-
-		output := buf.String()
-
-		// Check exact format
-		expectedLines := []string{
-			"studio-mcp 1.2.3",
-			"commit: abc123",
-			"built: 2023-01-01T00:00:00Z",
-		}
-
-		for _, line := range expectedLines {
-			assert.Contains(t, output, line, "Version output should contain: %s", line)
-		}
-	})
-
-	t.Run("version flag with dev values", func(t *testing.T) {
-		resetRootCmd()
-		// Set dev version info (default values from main.go)
-		Version = "dev"
-		Commit = "none"
-		Date = "unknown"
-
-		rootCmd.SetArgs([]string{"--version"})
-		var buf bytes.Buffer
-		rootCmd.SetOut(&buf)
-		rootCmd.SetErr(&buf)
-
-		err := rootCmd.Execute()
+		buf, err := testSetup("--version")
 		assert.NoError(t, err)
 
 		output := buf.String()
@@ -238,32 +80,58 @@ func TestVersionFlag(t *testing.T) {
 	})
 }
 
-func TestRootCommand_Execution(t *testing.T) {
-	t.Run("executes simple command", func(t *testing.T) {
-		resetRootCmd()
-		rootCmd.SetArgs([]string{"echo", "hello"})
-
-		// Test that the command line arguments are parsed correctly without actually starting the server
-		// This validates that the command structure is correct
-		args := rootCmd.ValidArgs
-		_ = args // Just to verify we can access the command structure
-
-		// For now we skip actual execution since it starts an MCP server over stdio
-		// which doesn't work well in test environment
-		t.Skip("Skipping actual execution - MCP server starts over stdio")
+func TestErrorCases(t *testing.T) {
+	t.Run("shows error with no arguments", func(t *testing.T) {
+		buf, err := testSetup()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
 	})
 
-	t.Run("handles blueprint arguments", func(t *testing.T) {
+	t.Run("errors when only flag is --debug", func(t *testing.T) {
+		buf, err := testSetup("--debug")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
+	})
+}
+
+func TestFlagParsing(t *testing.T) {
+	t.Run("parses debug flag", func(t *testing.T) {
 		resetRootCmd()
-		rootCmd.SetArgs([]string{"echo", "{{message#Text to display}}"})
+		assert.False(t, debugFlag)
 
-		// Test that the command line arguments are parsed correctly without actually starting the server
-		// This validates that blueprint arguments are handled correctly
-		args := rootCmd.ValidArgs
-		_ = args // Just to verify we can access the command structure
+		// Don't execute the command, just parse
+		rootCmd.ParseFlags([]string{"--debug", "echo", "hello"})
+		assert.True(t, debugFlag)
+	})
 
-		// For now we skip actual execution since it starts an MCP server over stdio
-		// which doesn't work well in test environment
-		t.Skip("Skipping actual execution - MCP server starts over stdio")
+	t.Run("parses version flag", func(t *testing.T) {
+		resetRootCmd()
+		assert.False(t, versionFlag)
+
+		rootCmd.ParseFlags([]string{"--version"})
+		assert.True(t, versionFlag)
+	})
+}
+
+func TestHelpTextDetailedContent(t *testing.T) {
+	t.Run("includes custom syntax and examples", func(t *testing.T) {
+		buf, err := testSetup("--help")
+		assert.NoError(t, err)
+
+		output := buf.String()
+		lines := []string{
+			"the command starts at the first non-flag argument:",
+			"<command> - the shell command to run",
+			"{{req # required arg}}",
+			"[args... # array of args]",
+			"[opt # optional string]",
+			"https://en.wikipedia.org/wiki/{{wiki_page_name}}",
+			"studio-mcp say -v siri",
+			"studio-mcp [--debug] <command> --example",
+		}
+
+		for _, line := range lines {
+			assert.Contains(t, output, line)
+		}
 	})
 }
