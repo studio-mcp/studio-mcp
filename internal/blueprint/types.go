@@ -49,15 +49,4 @@ type Blueprint struct {
 	ToolDescription string
 	InputSchema     *jsonschema.Schema
 	ShellWords      [][]Token // Tokenized shell words
-	args            []string  // Keep for backward compatibility
-	fields          []field   // Keep for backward compatibility
-}
-
-type field struct {
-	argIndex    int
-	name        string
-	description string
-	isArray     bool
-	isOptional  bool
-	formatter   func(interface{}) []string
 }
