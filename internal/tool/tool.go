@@ -74,7 +74,8 @@ func Execute(command string, args ...string) (string, error) {
 			return output, fmt.Errorf("command failed with exit code %d", exitErr.ExitCode())
 		}
 		debug("Spawn error: %s", err.Error())
-		return fmt.Sprintf("Studio error: %s", err.Error()), fmt.Errorf("Studio error: %w", err)
+		msg := fmt.Sprintf("Studio error: %s", err.Error())
+		return msg, fmt.Errorf("Studio error: %w", err)
 	}
 
 	debug("Command completed successfully with exit code 0")
