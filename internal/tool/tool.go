@@ -52,17 +52,20 @@ func Execute(command string, args ...string) (string, error) {
 	debug("Executing command: %s %s", command, strings.Join(args, " "))
 
 	if strings.TrimSpace(command) == "" {
-		return "", fmt.Errorf("Studio error: Empty command provided")
+		msg := "Studio error: Empty command provided"
+		return msg, fmt.Errorf(msg)
 	}
 
 	cmd := exec.Command(command, args...)
 
-	var cmdout bytes.Buffer
-	cmd.Stdout = &cmdout
-	cmd.Stderr = &cmdout
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
-	output := strings.TrimSpace(cmdout.String())
+
+	// Always combine outputs for visibility
+	output := strings.TrimSpace(stdout.String() + "\n" + stderr.String())
 
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -70,9 +73,8 @@ func Execute(command string, args ...string) (string, error) {
 			debug("Final output length: %d chars", len(output))
 			return output, fmt.Errorf("command failed with exit code %d", exitErr.ExitCode())
 		}
-		// Other execution errors (e.g., command not found)
 		debug("Spawn error: %s", err.Error())
-		return "", fmt.Errorf("Studio error: %w", err)
+		return fmt.Sprintf("Studio error: %s", err.Error()), fmt.Errorf("Studio error: %w", err)
 	}
 
 	debug("Command completed successfully with exit code 0")
