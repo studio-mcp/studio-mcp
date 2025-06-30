@@ -127,34 +127,30 @@ Inside a tag, there is a name and description:
 - `name`: The argument name that will be shown in the MCP tool schema. Only letter numbers and underscores (dashes and underscores are interchangeable, case-insensitive).
 - `description`: A description of what the argument should contain. Reads everything after the `#` to the end of the template tag.
 
-### What about {{cool_template_feature: string /[A-Z]+/ # Fancy tags}}?
+#### What about {{cool_template_feature: string /[A-Z]+/ # Fancy tags}}?
 
 This is a simple studio, not one of those fancy 1 bedroom flats.
 
-Maybe the landlord will get around to it at some point (but you're rent will go up).
+Maybe the landlord will get around to it at some point (but your rent will go up).
 
 ## Utilities Included
 
 To build and test locally:
 
 ```bash
-npm install
-npm run build
-npm run dev -- echo "{{text#What to echo?}}"
+make
+make test
+studio-mcp echo "{{text # what you want said to you}}"
 ```
 
 ### Did something break?
 
-The landlord definitely takes care of the place:
+The landlord _definitely_ takes care of the place...
 
 - more than none tests
 - files! lots of 'em!
 - maybe even some test coverage
 - you still need Proof of Renters Insurance
-
-```bash
-make test
-```
 
 Uncovered portions are tenant's responsibility. (no one appreciates how hard it is for us landlords)
 
