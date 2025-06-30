@@ -29,10 +29,9 @@ func FromArgs(args []string) (*Blueprint, error) {
 	// Tokenize each shell word
 	properties := make(map[string]*jsonschema.Schema)
 	required := []string{}
-	descriptionParts := []string{}
 
 	for i, arg := range args {
-		tokens, argProperties, argRequired, argDescription := tokenizeShellWord(arg)
+		tokens, argProperties, argRequired, _ := tokenizeShellWord(arg)
 		bp.ShellWords[i] = tokens
 
 		// Merge properties
@@ -52,12 +51,7 @@ func FromArgs(args []string) (*Blueprint, error) {
 				required = append(required, req)
 			}
 		}
-
-		descriptionParts = append(descriptionParts, argDescription)
 	}
-
-	// Build tool description
-	bp.ToolDescription = "Run the shell command `" + strings.Join(descriptionParts, " ") + "`"
 
 	// Update InputSchema
 	if len(properties) > 0 {
@@ -178,6 +172,7 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 
 			// Extract variable name and description
 			varName := strings.TrimSpace(word[nameStart:nameEnd])
+			originalName := word[nameStart:nameEnd] // Keep original spacing
 			description := ""
 			if descStart > 0 && descEnd > descStart {
 				description = strings.TrimSpace(word[descStart:descEnd])
@@ -185,9 +180,10 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 
 			// Add field token with original name
 			token := FieldToken{
-				Name:        varName, // Keep original name
-				Description: description,
-				Required:    true,
+				Name:         varName,      // Keep trimmed name for processing
+				OriginalName: originalName, // Keep original name with spacing for display
+				Description:  description,
+				Required:     true,
 			}
 			tokens = append(tokens, token)
 

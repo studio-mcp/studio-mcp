@@ -211,8 +211,8 @@ func (m *MockBlueprint) GetBaseCommand() string {
 	return "mock-tool"
 }
 
-func (m *MockBlueprint) GetToolDescription() string {
-	return "Mock tool for testing"
+func (m *MockBlueprint) GetCommandFormat() string {
+	return "mock-tool"
 }
 
 func (m *MockBlueprint) GetInputSchema() interface{} {
@@ -235,8 +235,8 @@ func (m *MockBlueprintWithError) GetBaseCommand() string {
 	return "mock-error-tool"
 }
 
-func (m *MockBlueprintWithError) GetToolDescription() string {
-	return "Mock error tool for testing"
+func (m *MockBlueprintWithError) GetCommandFormat() string {
+	return "mock-error-tool"
 }
 
 func (m *MockBlueprintWithError) GetInputSchema() interface{} {

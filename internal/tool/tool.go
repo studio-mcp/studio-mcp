@@ -16,7 +16,7 @@ import (
 type Blueprint interface {
 	BuildCommandArgs(args map[string]interface{}) ([]string, error)
 	GetBaseCommand() string
-	GetToolDescription() string
+	GetCommandFormat() string
 	GetInputSchema() interface{}
 }
 
@@ -108,7 +108,7 @@ func CreateServerTool(blueprint Blueprint) *mcp.ServerTool {
 
 	return mcp.NewServerTool(
 		GenerateToolName(blueprint.GetBaseCommand()),
-		blueprint.GetToolDescription(),
+		GetToolDescription(blueprint),
 		CreateToolFunction(blueprint),
 		mcp.Input(mcp.Schema(schema)),
 	)
@@ -121,4 +121,9 @@ func createToolResult(output string, isError bool) *mcp.CallToolResultFor[map[st
 		},
 		IsError: isError,
 	}
+}
+
+// GetToolDescription generates the tool description from a blueprint
+func GetToolDescription(blueprint Blueprint) string {
+	return "Run the shell command `" + blueprint.GetCommandFormat() + "`"
 }
