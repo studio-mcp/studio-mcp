@@ -9,35 +9,21 @@ import (
 
 // FromArgs creates a new Blueprint from command arguments
 func FromArgs(args []string) (*Blueprint, error) {
-	// Use tokenization internally
-	tbp, err := TokenizeFromArgs(args)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create Blueprint with tokenized data
-	bp := &Blueprint{
-		BaseCommand:     tbp.BaseCommand,
-		ToolName:        tbp.ToolName,
-		ToolDescription: tbp.ToolDescription,
-		InputSchema:     tbp.InputSchema,
-		ShellWords:      tbp.ShellWords,
-	}
-
-	return bp, nil
+	// Use tokenization directly
+	return TokenizeFromArgs(args)
 }
 
-// TokenizeFromArgs creates a new TokenizedBlueprint from command arguments
-func TokenizeFromArgs(args []string) (*TokenizedBlueprint, error) {
+// TokenizeFromArgs creates a new Blueprint from command arguments using tokenization
+func TokenizeFromArgs(args []string) (*Blueprint, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("cannot create tokenized blueprint: no command provided")
+		return nil, fmt.Errorf("cannot create blueprint: no command provided")
 	}
 
 	if strings.TrimSpace(args[0]) == "" {
-		return nil, fmt.Errorf("cannot create tokenized blueprint: empty command provided")
+		return nil, fmt.Errorf("cannot create blueprint: empty command provided")
 	}
 
-	tbp := &TokenizedBlueprint{
+	bp := &Blueprint{
 		BaseCommand: args[0],
 		ToolName:    strings.ReplaceAll(args[0], "-", "_"),
 		ShellWords:  make([][]Token, len(args)),
@@ -54,7 +40,7 @@ func TokenizeFromArgs(args []string) (*TokenizedBlueprint, error) {
 
 	for i, arg := range args {
 		tokens, argProperties, argRequired, argDescription := tokenizeShellWord(arg)
-		tbp.ShellWords[i] = tokens
+		bp.ShellWords[i] = tokens
 
 		// Merge properties
 		for k, v := range argProperties {
@@ -78,17 +64,17 @@ func TokenizeFromArgs(args []string) (*TokenizedBlueprint, error) {
 	}
 
 	// Build tool description
-	tbp.ToolDescription = "Run the shell command `" + strings.Join(descriptionParts, " ") + "`"
+	bp.ToolDescription = "Run the shell command `" + strings.Join(descriptionParts, " ") + "`"
 
 	// Update InputSchema
 	if len(properties) > 0 {
-		tbp.InputSchema.Properties = properties
+		bp.InputSchema.Properties = properties
 	}
 	if len(required) > 0 {
-		tbp.InputSchema.Required = required
+		bp.InputSchema.Required = required
 	}
 
-	return tbp, nil
+	return bp, nil
 }
 
 // tokenizeShellWord tokenizes a single shell word into tokens

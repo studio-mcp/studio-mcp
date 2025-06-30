@@ -33,15 +33,6 @@ func (t FieldToken) String() string {
 	return "[" + t.Name + "]"
 }
 
-// TokenizedBlueprint represents the tokenized result of parsing
-type TokenizedBlueprint struct {
-	BaseCommand     string
-	ToolName        string
-	ToolDescription string
-	InputSchema     *jsonschema.Schema
-	ShellWords      [][]Token // Array of token arrays, one per shell word
-}
-
 // Blueprint represents a parsed command template
 type Blueprint struct {
 	BaseCommand     string

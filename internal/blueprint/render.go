@@ -5,37 +5,39 @@ import (
 	"strings"
 )
 
-// normalizeFieldName converts dashes to underscores for field name matching
+// normalizeFieldName converts field names to use underscores instead of dashes
 func normalizeFieldName(name string) string {
 	return strings.ReplaceAll(name, "-", "_")
 }
 
-// findParamValue finds a parameter value, handling dash-underscore equivalence
+// findParamValue finds a parameter value by name, handling dash-underscore equivalence
 func findParamValue(params map[string]interface{}, fieldName string) (interface{}, bool) {
 	// Try exact match first
 	if value, exists := params[fieldName]; exists {
 		return value, true
 	}
 
-	// Try normalized version (dash to underscore)
-	normalizedField := normalizeFieldName(fieldName)
-	if value, exists := params[normalizedField]; exists {
+	// Try normalized version (dashes to underscores)
+	normalized := normalizeFieldName(fieldName)
+	if value, exists := params[normalized]; exists {
 		return value, true
 	}
 
-	// Try the reverse (underscore to dash)
-	dashedField := strings.ReplaceAll(fieldName, "_", "-")
-	if value, exists := params[dashedField]; exists {
-		return value, true
+	// Try reverse (underscores to dashes) if original had underscores
+	if strings.Contains(fieldName, "_") {
+		dashed := strings.ReplaceAll(fieldName, "_", "-")
+		if value, exists := params[dashed]; exists {
+			return value, true
+		}
 	}
 
 	return nil, false
 }
 
-// BuildCommandArgs builds the actual command arguments from the tokenized template
-func (tbp *TokenizedBlueprint) BuildCommandArgs(params map[string]interface{}) ([]string, error) {
+// buildCommandArgsTokenized builds the actual command arguments using the tokenized approach
+func (bp *Blueprint) buildCommandArgsTokenized(params map[string]interface{}) ([]string, error) {
 	// Validate required parameters
-	for _, required := range tbp.InputSchema.Required {
+	for _, required := range bp.InputSchema.Required {
 		if _, exists := findParamValue(params, required); !exists {
 			return nil, fmt.Errorf("missing required parameter: %s", required)
 		}
@@ -43,7 +45,7 @@ func (tbp *TokenizedBlueprint) BuildCommandArgs(params map[string]interface{}) (
 
 	// Validate parameter types
 	for name, param := range params {
-		if schema, exists := tbp.InputSchema.Properties[normalizeFieldName(name)]; exists {
+		if schema, exists := bp.InputSchema.Properties[normalizeFieldName(name)]; exists {
 			if schema.Type == "array" {
 				// Check if it's an array type
 				switch v := param.(type) {
@@ -60,9 +62,9 @@ func (tbp *TokenizedBlueprint) BuildCommandArgs(params map[string]interface{}) (
 
 	result := []string{}
 
-	for _, shellWord := range tbp.ShellWords {
+	for _, shellWord := range bp.ShellWords {
 		// Check if this shell word should be included
-		shouldInclude, wordResult := tbp.renderShellWord(shellWord, params)
+		shouldInclude, wordResult := bp.renderShellWord(shellWord, params)
 		if shouldInclude {
 			if len(wordResult) == 0 {
 				// Empty result means skip this word
@@ -76,7 +78,7 @@ func (tbp *TokenizedBlueprint) BuildCommandArgs(params map[string]interface{}) (
 }
 
 // renderShellWord renders a single shell word from its tokens
-func (tbp *TokenizedBlueprint) renderShellWord(tokens []Token, params map[string]interface{}) (bool, []string) {
+func (bp *Blueprint) renderShellWord(tokens []Token, params map[string]interface{}) (bool, []string) {
 	// Check if this word contains only optional fields that are not provided
 	hasRequiredContent := false
 	allOptionalFieldsEmpty := true
@@ -93,7 +95,7 @@ func (tbp *TokenizedBlueprint) renderShellWord(tokens []Token, params map[string
 					allOptionalFieldsEmpty = false
 				} else {
 					// Optional field - check if it has a meaningful value
-					if tbp.hasValue(value) {
+					if bp.hasValue(value) {
 						allOptionalFieldsEmpty = false
 					}
 				}
@@ -112,13 +114,13 @@ func (tbp *TokenizedBlueprint) renderShellWord(tokens []Token, params map[string
 	if len(tokens) == 1 {
 		if fieldToken, ok := tokens[0].(FieldToken); ok {
 			// Check if this is an array field first (arrays take precedence)
-			if schema, exists := tbp.InputSchema.Properties[normalizeFieldName(fieldToken.Name)]; exists && schema.Type == "array" {
-				return tbp.renderArrayField(fieldToken, params)
+			if schema, exists := bp.InputSchema.Properties[normalizeFieldName(fieldToken.Name)]; exists && schema.Type == "array" {
+				return bp.renderArrayField(fieldToken, params)
 			}
 
 			// Then check if it's an optional field
 			if !fieldToken.Required {
-				return tbp.renderSingleOptionalField(fieldToken, params)
+				return bp.renderSingleOptionalField(fieldToken, params)
 			}
 		}
 	}
@@ -131,7 +133,7 @@ func (tbp *TokenizedBlueprint) renderShellWord(tokens []Token, params map[string
 			parts = append(parts, t.Value)
 		case FieldToken:
 			if value, exists := findParamValue(params, t.Name); exists {
-				if strValue := tbp.valueToString(value); strValue != "" {
+				if strValue := bp.valueToString(value); strValue != "" {
 					parts = append(parts, strValue)
 				}
 			}
@@ -146,14 +148,14 @@ func (tbp *TokenizedBlueprint) renderShellWord(tokens []Token, params map[string
 }
 
 // renderSingleOptionalField handles rendering of a single optional field token
-func (tbp *TokenizedBlueprint) renderSingleOptionalField(fieldToken FieldToken, params map[string]interface{}) (bool, []string) {
+func (bp *Blueprint) renderSingleOptionalField(fieldToken FieldToken, params map[string]interface{}) (bool, []string) {
 	value, exists := findParamValue(params, fieldToken.Name)
 	if !exists {
 		return false, nil
 	}
 
 	// Check if this is a boolean flag
-	if schema, schemaExists := tbp.InputSchema.Properties[normalizeFieldName(fieldToken.Name)]; schemaExists && schema.Type == "boolean" {
+	if schema, schemaExists := bp.InputSchema.Properties[normalizeFieldName(fieldToken.Name)]; schemaExists && schema.Type == "boolean" {
 		if boolValue, ok := value.(bool); ok {
 			if boolValue {
 				// Use the original flag format if available, otherwise construct it
@@ -168,7 +170,7 @@ func (tbp *TokenizedBlueprint) renderSingleOptionalField(fieldToken FieldToken, 
 	}
 
 	// Regular optional field
-	if strValue := tbp.valueToString(value); strValue != "" {
+	if strValue := bp.valueToString(value); strValue != "" {
 		return true, []string{strValue}
 	}
 
@@ -176,7 +178,7 @@ func (tbp *TokenizedBlueprint) renderSingleOptionalField(fieldToken FieldToken, 
 }
 
 // renderArrayField handles rendering of array fields
-func (tbp *TokenizedBlueprint) renderArrayField(fieldToken FieldToken, params map[string]interface{}) (bool, []string) {
+func (bp *Blueprint) renderArrayField(fieldToken FieldToken, params map[string]interface{}) (bool, []string) {
 	value, exists := findParamValue(params, fieldToken.Name)
 	if !exists {
 		return false, nil
@@ -198,7 +200,7 @@ func (tbp *TokenizedBlueprint) renderArrayField(fieldToken FieldToken, params ma
 }
 
 // hasValue checks if a value is meaningful (not empty)
-func (tbp *TokenizedBlueprint) hasValue(value interface{}) bool {
+func (bp *Blueprint) hasValue(value interface{}) bool {
 	switch v := value.(type) {
 	case string:
 		return v != ""
@@ -214,7 +216,7 @@ func (tbp *TokenizedBlueprint) hasValue(value interface{}) bool {
 }
 
 // valueToString converts a value to its string representation
-func (tbp *TokenizedBlueprint) valueToString(value interface{}) string {
+func (bp *Blueprint) valueToString(value interface{}) string {
 	switch v := value.(type) {
 	case string:
 		return v
@@ -230,14 +232,6 @@ func (tbp *TokenizedBlueprint) valueToString(value interface{}) string {
 
 // BuildCommandArgs builds the actual command arguments from the template
 func (bp *Blueprint) BuildCommandArgs(params map[string]interface{}) ([]string, error) {
-	// Use the tokenized approach by creating a temporary TokenizedBlueprint
-	tbp := &TokenizedBlueprint{
-		BaseCommand:     bp.BaseCommand,
-		ToolName:        bp.ToolName,
-		ToolDescription: bp.ToolDescription,
-		InputSchema:     bp.InputSchema,
-		ShellWords:      bp.ShellWords,
-	}
-
-	return tbp.BuildCommandArgs(params)
+	// Use the tokenized approach directly
+	return bp.buildCommandArgsTokenized(params)
 }
