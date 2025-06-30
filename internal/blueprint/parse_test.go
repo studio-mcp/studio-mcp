@@ -628,3 +628,93 @@ func TestBlueprint_FromArgsErrors(t *testing.T) {
 		assert.Contains(t, err.Error(), "empty command provided")
 	})
 }
+
+func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
+	t.Run("tokenizes simple command without templates", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "hello"})
+		require.NoError(t, err)
+
+		assert.Equal(t, "echo", tbp.BaseCommand)
+		assert.Equal(t, "echo", tbp.ToolName)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{TextToken{Value: "hello"}},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+
+	t.Run("tokenizes command with simple template", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "{{text}}"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "text", Description: "", Required: true}},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+
+	t.Run("tokenizes command with template and description", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "{{text#message to echo}}"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "text", Description: "message to echo", Required: true}},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+
+	t.Run("tokenizes command with mixed text and template", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "prefix{{text#desc}}suffix"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				TextToken{Value: "prefix"},
+				FieldToken{Name: "text", Description: "desc", Required: true},
+				TextToken{Value: "suffix"},
+			},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+
+	t.Run("tokenizes command with optional field", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "[optional]"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "optional", Description: "", Required: false}},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+
+	t.Run("tokenizes command with optional field and description", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "[optional#optional text]"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "optional", Description: "optional text", Required: false}},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+
+	t.Run("tokenizes complex mixed command", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"curl", "https://api.com/{{endpoint#API endpoint}}", "[--verbose]"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "curl"}},
+			{
+				TextToken{Value: "https://api.com/"},
+				FieldToken{Name: "endpoint", Description: "API endpoint", Required: true},
+			},
+			{FieldToken{Name: "verbose", Description: "Enable --verbose flag", Required: false}},
+		}
+		assert.Equal(t, expected, tbp.ShellWords)
+	})
+}
