@@ -51,11 +51,6 @@ func debug(format string, args ...interface{}) {
 func Execute(command string, args ...string) (string, error) {
 	debug("Executing command: %s %s", command, strings.Join(args, " "))
 
-	if strings.TrimSpace(command) == "" {
-		msg := "Studio error: Empty command provided"
-		return msg, fmt.Errorf(msg)
-	}
-
 	cmd := exec.Command(command, args...)
 
 	var stdout, stderr bytes.Buffer
@@ -74,7 +69,7 @@ func Execute(command string, args ...string) (string, error) {
 			return output, fmt.Errorf("command failed with exit code %d", exitErr.ExitCode())
 		}
 		debug("Spawn error: %s", err.Error())
-		return fmt.Sprintf("Studio error: %s", err.Error()), fmt.Errorf("Studio error: %w", err)
+		return output, fmt.Errorf("Studio error: %w", err)
 	}
 
 	debug("Command completed successfully with exit code 0")
@@ -103,7 +98,7 @@ func CreateToolFunction(blueprint Blueprint) ToolFunction {
 		output, err := Execute(fullCommand[0], fullCommand[1:]...)
 		isError := err != nil
 
-		if err != nil {
+		if isError {
 			debug("Execution error: %s", err)
 		}
 

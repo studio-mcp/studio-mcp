@@ -37,7 +37,15 @@ type template struct {
 }
 
 // FromArgs creates a new Blueprint from command arguments
-func FromArgs(args []string) *Blueprint {
+func FromArgs(args []string) (*Blueprint, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("cannot create blueprint: no command provided")
+	}
+
+	if strings.TrimSpace(args[0]) == "" {
+		return nil, fmt.Errorf("cannot create blueprint: empty command provided")
+	}
+
 	bp := &Blueprint{
 		args:      args,
 		templates: []template{},
@@ -45,10 +53,6 @@ func FromArgs(args []string) *Blueprint {
 			Type:       "object",
 			Properties: make(map[string]*jsonschema.Schema),
 		},
-	}
-
-	if len(args) == 0 {
-		return bp
 	}
 
 	bp.BaseCommand = args[0]
@@ -201,7 +205,7 @@ func FromArgs(args []string) *Blueprint {
 		bp.InputSchema.Required = required
 	}
 
-	return bp
+	return bp, nil
 }
 
 // BuildCommandArgs builds the actual command arguments from the template

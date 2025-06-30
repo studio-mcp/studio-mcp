@@ -22,7 +22,10 @@ func New(args []string, debugMode bool, version string) (*Studio, error) {
 		return nil, fmt.Errorf("no command provided")
 	}
 
-	bp := blueprint.FromArgs(args)
+	bp, err := blueprint.FromArgs(args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create blueprint: %w", err)
+	}
 
 	// Set debug mode on tool
 	tool.SetDebugMode(debugMode)

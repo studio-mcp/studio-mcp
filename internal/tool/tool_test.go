@@ -37,16 +37,9 @@ func TestTool_Execute(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:           "handles non-existent command",
-			args:           []string{"this-command-does-not-exist-12345"},
-			expectError:    true,
-			containsOutput: "Studio error:",
-		},
-		{
-			name:         "handles empty command",
-			args:         []string{""},
-			expectError:  true,
-			expectOutput: "Studio error: Empty command provided",
+			name:        "handles non-existent command",
+			args:        []string{"this-command-does-not-exist-12345"},
+			expectError: true,
 		},
 		{
 			name:         "handles command with spaces",
@@ -95,7 +88,7 @@ func TestTool_CreateToolFunction(t *testing.T) {
 	tests := []struct {
 		name           string
 		blueprint      Blueprint
-		args           map[string]interface{}
+		args           map[string]any
 		expectText     string
 		expectIsError  bool
 		expectContains string
@@ -103,26 +96,33 @@ func TestTool_CreateToolFunction(t *testing.T) {
 		{
 			name:       "creates function for simple command",
 			blueprint:  &MockBlueprint{commandArgs: []string{"echo", "hello"}},
-			args:       map[string]interface{}{},
+			args:       map[string]any{},
 			expectText: "hello",
 		},
 		{
 			name:       "creates function with template arguments",
 			blueprint:  &MockBlueprint{commandArgs: []string{"echo", "Hello World"}},
-			args:       map[string]interface{}{"message": "Hello World"},
+			args:       map[string]any{"message": "Hello World"},
 			expectText: "Hello World",
 		},
 		{
 			name:          "handles command errors",
 			blueprint:     &MockBlueprint{commandArgs: []string{"false"}},
-			args:          map[string]interface{}{},
+			args:          map[string]any{},
 			expectText:    "",
 			expectIsError: true,
 		},
 		{
+			name:           "handles command errors with stderr output",
+			blueprint:      &MockBlueprint{commandArgs: []string{"sh", "-c", "echo 'error message' >&2; exit 1"}},
+			args:           map[string]any{},
+			expectContains: "error message",
+			expectIsError:  true,
+		},
+		{
 			name:           "handles blueprint validation errors",
 			blueprint:      &MockBlueprintWithError{err: fmt.Errorf("missing required parameter: name")},
-			args:           map[string]interface{}{},
+			args:           map[string]any{},
 			expectIsError:  true,
 			expectContains: "Validation error: missing required parameter: name",
 		},

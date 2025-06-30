@@ -7,7 +7,7 @@ yarn-error.log*
 .nyc_output
 coverage/
 
-# Binaries downloaded by install.js
+studio-mcp
 bin/
 .DS_Store
 *.tgz
