@@ -116,7 +116,7 @@ GitHub repository must have these secrets configured:
 - Git tags must follow `v*` pattern for workflow trigger
 - package.json version should not include 'v' prefix
 
-## Manual Release (Emergency)
+## Manual Release
 
 If automated release fails:
 
