@@ -17,10 +17,10 @@
   ],
   "author": "Martin Emde <me@martinemde.com>",
   "license": "MIT",
-  "homepage": "https://github.com/martinemde/studio",
+  "homepage": "https://github.com/martinemde/studio-mcp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/martinemde/studio.git",
+    "url": "https://github.com/martinemde/studio-mcp.git",
     "directory": "studio-mcp"
   },
   "files": [
