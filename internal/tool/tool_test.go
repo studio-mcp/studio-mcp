@@ -9,62 +9,72 @@ import (
 )
 
 func TestTool_Execute(t *testing.T) {
-	t.Run("executes simple command successfully", func(t *testing.T) {
-		result, err := Execute("echo", "hello")
+	tests := []struct {
+		name           string
+		args           []string
+		expectSuccess  bool
+		expectOutput   string
+		containsOutput string
+	}{
+		{
+			name:          "executes simple command successfully",
+			args:          []string{"echo", "hello"},
+			expectSuccess: true,
+			expectOutput:  "hello",
+		},
+		{
+			name:          "executes command with multiple arguments",
+			args:          []string{"echo", "hello", "world"},
+			expectSuccess: true,
+			expectOutput:  "hello world",
+		},
+		{
+			name:           "captures stderr output",
+			args:           []string{"sh", "-c", "echo 'error message' >&2"},
+			expectSuccess:  true,
+			containsOutput: "error message",
+		},
+		{
+			name:          "handles command failure",
+			args:          []string{"false"},
+			expectSuccess: false,
+			expectOutput:  "",
+		},
+		{
+			name:           "handles non-existent command",
+			args:           []string{"this-command-does-not-exist-12345"},
+			expectSuccess:  false,
+			containsOutput: "Studio error:",
+		},
+		{
+			name:          "handles empty command",
+			args:          []string{""},
+			expectSuccess: false,
+			expectOutput:  "Studio error: Empty command provided",
+		},
+		{
+			name:          "handles command with spaces",
+			args:          []string{"echo", "hello world with spaces"},
+			expectSuccess: true,
+			expectOutput:  "hello world with spaces",
+		},
+	}
 
-		assert.NoError(t, err)
-		assert.True(t, result.Success)
-		assert.Equal(t, "hello", strings.TrimSpace(result.Output))
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Execute(tt.args[0], tt.args[1:]...)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectSuccess, result.Success)
 
-	t.Run("executes command with multiple arguments", func(t *testing.T) {
-		result, err := Execute("echo", "hello", "world")
+			if tt.expectOutput != "" {
+				assert.Equal(t, tt.expectOutput, strings.TrimSpace(result.Output))
+			}
 
-		assert.NoError(t, err)
-		assert.True(t, result.Success)
-		assert.Equal(t, "hello world", strings.TrimSpace(result.Output))
-	})
-
-	t.Run("captures stderr output", func(t *testing.T) {
-		// Using sh -c to run a command that writes to stderr
-		result, err := Execute("sh", "-c", "echo 'error message' >&2")
-
-		assert.NoError(t, err)
-		assert.True(t, result.Success)
-		assert.Contains(t, result.Output, "error message")
-	})
-
-	t.Run("handles command failure", func(t *testing.T) {
-		result, err := Execute("false")
-
-		assert.NoError(t, err)
-		assert.False(t, result.Success)
-		assert.Equal(t, "", strings.TrimSpace(result.Output))
-	})
-
-	t.Run("handles non-existent command", func(t *testing.T) {
-		result, err := Execute("this-command-does-not-exist-12345")
-
-		assert.NoError(t, err)
-		assert.False(t, result.Success)
-		assert.Contains(t, result.Output, "Studio error:")
-	})
-
-	t.Run("handles empty command", func(t *testing.T) {
-		result, err := Execute("")
-
-		assert.NoError(t, err)
-		assert.False(t, result.Success)
-		assert.Equal(t, "Studio error: Empty command provided", result.Output)
-	})
-
-	t.Run("handles command with spaces", func(t *testing.T) {
-		result, err := Execute("echo", "hello world with spaces")
-
-		assert.NoError(t, err)
-		assert.True(t, result.Success)
-		assert.Equal(t, "hello world with spaces", strings.TrimSpace(result.Output))
-	})
+			if tt.containsOutput != "" {
+				assert.Contains(t, result.Output, tt.containsOutput)
+			}
+		})
+	}
 }
 
 func TestTool_DebugMode(t *testing.T) {
@@ -83,63 +93,61 @@ func TestTool_DebugMode(t *testing.T) {
 }
 
 func TestTool_CreateToolFunction(t *testing.T) {
-	t.Run("creates function for simple command", func(t *testing.T) {
-		blueprint := &MockBlueprint{
-			commandArgs: []string{"echo", "hello"},
-		}
+	tests := []struct {
+		name           string
+		blueprint      Blueprint
+		args           map[string]interface{}
+		expectText     string
+		expectIsError  bool
+		expectContains string
+	}{
+		{
+			name:       "creates function for simple command",
+			blueprint:  &MockBlueprint{commandArgs: []string{"echo", "hello"}},
+			args:       map[string]interface{}{},
+			expectText: "hello",
+		},
+		{
+			name:       "creates function with template arguments",
+			blueprint:  &MockBlueprint{commandArgs: []string{"echo", "Hello World"}},
+			args:       map[string]interface{}{"message": "Hello World"},
+			expectText: "Hello World",
+		},
+		{
+			name:          "handles command errors",
+			blueprint:     &MockBlueprint{commandArgs: []string{"false"}},
+			args:          map[string]interface{}{},
+			expectText:    "",
+			expectIsError: true,
+		},
+		{
+			name:           "handles blueprint validation errors",
+			blueprint:      &MockBlueprintWithError{err: fmt.Errorf("missing required parameter: name")},
+			args:           map[string]interface{}{},
+			expectIsError:  true,
+			expectContains: "Validation error: missing required parameter: name",
+		},
+	}
 
-		fn := CreateToolFunction(blueprint)
-		result := fn(map[string]interface{}{})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn := CreateToolFunction(tt.blueprint)
+			result := fn(tt.args)
 
-		assert.Len(t, result.Content, 1)
-		assert.Equal(t, "text", result.Content[0]["type"])
-		assert.Equal(t, "hello", result.Content[0]["text"])
-		assert.False(t, result.IsError)
-	})
+			assert.Len(t, result.Content, 1)
+			assert.Equal(t, "text", result.Content[0]["type"])
 
-	t.Run("creates function with template arguments", func(t *testing.T) {
-		blueprint := &MockBlueprint{
-			commandArgs: []string{"echo", "Hello World"},
-		}
+			text := result.Content[0]["text"].(string)
 
-		fn := CreateToolFunction(blueprint)
-		result := fn(map[string]interface{}{
-			"message": "Hello World",
+			if tt.expectContains != "" {
+				assert.Contains(t, text, tt.expectContains)
+			} else {
+				assert.Equal(t, tt.expectText, text)
+			}
+
+			assert.Equal(t, tt.expectIsError, result.IsError)
 		})
-
-		assert.Len(t, result.Content, 1)
-		assert.Equal(t, "text", result.Content[0]["type"])
-		assert.Equal(t, "Hello World", result.Content[0]["text"])
-		assert.False(t, result.IsError)
-	})
-
-	t.Run("handles command errors", func(t *testing.T) {
-		blueprint := &MockBlueprint{
-			commandArgs: []string{"false"},
-		}
-
-		fn := CreateToolFunction(blueprint)
-		result := fn(map[string]interface{}{})
-
-		assert.Len(t, result.Content, 1)
-		assert.Equal(t, "text", result.Content[0]["type"])
-		assert.Equal(t, "", result.Content[0]["text"])
-		assert.True(t, result.IsError)
-	})
-
-	t.Run("handles blueprint validation errors", func(t *testing.T) {
-		blueprint := &MockBlueprintWithError{
-			err: fmt.Errorf("missing required parameter: name"),
-		}
-
-		fn := CreateToolFunction(blueprint)
-		result := fn(map[string]interface{}{})
-
-		assert.Len(t, result.Content, 1)
-		assert.Equal(t, "text", result.Content[0]["type"])
-		assert.Contains(t, result.Content[0]["text"], "Validation error: missing required parameter: name")
-		assert.True(t, result.IsError)
-	})
+	}
 }
 
 // MockBlueprint is a test helper that implements the Blueprint interface
