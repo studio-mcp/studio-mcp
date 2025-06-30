@@ -17,63 +17,21 @@ type parseResult struct {
 
 // FromArgs creates a new Blueprint from command arguments
 func FromArgs(args []string) (*Blueprint, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("cannot create blueprint: no command provided")
+	// Use tokenization internally
+	tbp, err := TokenizeFromArgs(args)
+	if err != nil {
+		return nil, err
 	}
 
-	if strings.TrimSpace(args[0]) == "" {
-		return nil, fmt.Errorf("cannot create blueprint: empty command provided")
-	}
-
+	// Create Blueprint with tokenized data
 	bp := &Blueprint{
-		args:   args,
-		fields: []field{},
-		InputSchema: &jsonschema.Schema{
-			Type:       "object",
-			Properties: make(map[string]*jsonschema.Schema),
-		},
-	}
-
-	bp.BaseCommand = args[0]
-	bp.ToolName = strings.ReplaceAll(args[0], "-", "_")
-
-	// Parse arguments for templates
-	descriptionParts := []string{bp.BaseCommand}
-	properties := make(map[string]*jsonschema.Schema)
-	required := []string{}
-
-	for i := 1; i < len(args); i++ {
-		result := parseArgument(args[i], i)
-
-		// Merge results
-		bp.fields = append(bp.fields, result.fields...)
-		for k, v := range result.properties {
-			// If property already exists, only overwrite if new one has description and old one doesn't
-			if existingProp, exists := properties[k]; exists {
-				if v.Description != "" && existingProp.Description == "" {
-					properties[k] = v
-				}
-			} else {
-				properties[k] = v
-			}
-		}
-		for _, req := range result.required {
-			if !contains(required, req) {
-				required = append(required, req)
-			}
-		}
-		descriptionParts = append(descriptionParts, result.descriptionParts...)
-	}
-
-	// Build tool description
-	bp.ToolDescription = "Run the shell command `" + strings.Join(descriptionParts, " ") + "`"
-
-	// Update InputSchema
-	if len(properties) > 0 {
-		bp.InputSchema.Properties = properties
-	}
-	if len(required) > 0 {
-		bp.InputSchema.Required = required
+		BaseCommand:     tbp.BaseCommand,
+		ToolName:        tbp.ToolName,
+		ToolDescription: tbp.ToolDescription,
+		InputSchema:     tbp.InputSchema,
+		ShellWords:      tbp.ShellWords,
+		args:            args,      // Keep for backward compatibility
+		fields:          []field{}, // Keep empty for backward compatibility
 	}
 
 	return bp, nil
@@ -332,9 +290,10 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 		}
 
 		token := FieldToken{
-			Name:        flagName, // Store original name
-			Description: description,
-			Required:    false,
+			Name:         flagName, // Store original name
+			Description:  description,
+			Required:     false,
+			OriginalFlag: flag, // Store original flag format
 		}
 		tokens = append(tokens, token)
 
@@ -384,7 +343,7 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 				prop.Description = description
 			}
 			properties[normalizedName] = prop
-			descriptionPart = "[" + varName + "]"
+			descriptionPart = "[" + normalizedName + "]"
 		}
 
 		return tokens, properties, required, descriptionPart

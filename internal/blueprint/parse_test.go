@@ -650,7 +650,7 @@ func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "text", Description: "", Required: true}},
+			{FieldToken{Name: "text", Description: "", Required: true, OriginalFlag: ""}},
 		}
 		assert.Equal(t, expected, tbp.ShellWords)
 	})
@@ -661,7 +661,7 @@ func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "text", Description: "message to echo", Required: true}},
+			{FieldToken{Name: "text", Description: "message to echo", Required: true, OriginalFlag: ""}},
 		}
 		assert.Equal(t, expected, tbp.ShellWords)
 	})
@@ -674,7 +674,7 @@ func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
 			{TextToken{Value: "echo"}},
 			{
 				TextToken{Value: "prefix"},
-				FieldToken{Name: "text", Description: "desc", Required: true},
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
 				TextToken{Value: "suffix"},
 			},
 		}
@@ -687,7 +687,7 @@ func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "optional", Description: "", Required: false}},
+			{FieldToken{Name: "optional", Description: "", Required: false, OriginalFlag: ""}},
 		}
 		assert.Equal(t, expected, tbp.ShellWords)
 	})
@@ -698,7 +698,7 @@ func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "optional", Description: "optional text", Required: false}},
+			{FieldToken{Name: "optional", Description: "optional text", Required: false, OriginalFlag: ""}},
 		}
 		assert.Equal(t, expected, tbp.ShellWords)
 	})
@@ -711,9 +711,9 @@ func TestTokenizedBlueprint_ParseSimpleCommand(t *testing.T) {
 			{TextToken{Value: "curl"}},
 			{
 				TextToken{Value: "https://api.com/"},
-				FieldToken{Name: "endpoint", Description: "API endpoint", Required: true},
+				FieldToken{Name: "endpoint", Description: "API endpoint", Required: true, OriginalFlag: ""},
 			},
-			{FieldToken{Name: "verbose", Description: "Enable --verbose flag", Required: false}},
+			{FieldToken{Name: "verbose", Description: "Enable --verbose flag", Required: false, OriginalFlag: "--verbose"}},
 		}
 		assert.Equal(t, expected, tbp.ShellWords)
 	})

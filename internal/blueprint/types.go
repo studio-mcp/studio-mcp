@@ -20,9 +20,10 @@ func (t TextToken) String() string {
 
 // FieldToken represents a template field in a shell word
 type FieldToken struct {
-	Name        string
-	Description string
-	Required    bool
+	Name         string
+	Description  string
+	Required     bool
+	OriginalFlag string // For boolean flags, stores the original flag format (e.g., "-f", "--verbose")
 }
 
 func (t FieldToken) String() string {
@@ -47,8 +48,9 @@ type Blueprint struct {
 	ToolName        string
 	ToolDescription string
 	InputSchema     *jsonschema.Schema
-	args            []string
-	fields          []field
+	ShellWords      [][]Token // Tokenized shell words
+	args            []string  // Keep for backward compatibility
+	fields          []field   // Keep for backward compatibility
 }
 
 type field struct {
