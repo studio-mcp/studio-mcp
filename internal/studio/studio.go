@@ -13,10 +13,11 @@ import (
 type Studio struct {
 	Blueprint *blueprint.Blueprint
 	DebugMode bool
+	Version   string
 }
 
 // New creates a new Studio instance from command arguments
-func New(args []string, debugMode bool) (*Studio, error) {
+func New(args []string, debugMode bool, version string) (*Studio, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("no command provided")
 	}
@@ -29,13 +30,14 @@ func New(args []string, debugMode bool) (*Studio, error) {
 	return &Studio{
 		Blueprint: bp,
 		DebugMode: debugMode,
+		Version:   version,
 	}, nil
 }
 
 // Serve starts the MCP server over stdio
 func (s *Studio) Serve() error {
-	// Create server with basic capabilities
-	server := mcp.NewServer("studio-mcp", "1.0.0", nil)
+	// Create server with version from build
+	server := mcp.NewServer("studio-mcp", s.Version, nil)
 
 	// Create tool function from blueprint
 	toolFunc := tool.CreateToolFunction(s.Blueprint)
@@ -62,7 +64,7 @@ func (s *Studio) Serve() error {
 	}
 
 	// Add the tool to the server using NewServerTool with schema directly from blueprint
-	serverTool := mcp.NewServerTool[map[string]any, map[string]any](
+	serverTool := mcp.NewServerTool(
 		s.Blueprint.ToolName,
 		s.Blueprint.ToolDescription,
 		handler,

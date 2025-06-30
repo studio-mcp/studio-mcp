@@ -1,0 +1,68 @@
+name: Release Go binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upload individual binaries for npm wrapper
+        run: |
+          # Extract version from tag
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Download and rename binaries for npm wrapper compatibility
+          gh release download $VERSION --pattern "studio-mcp_Linux_x86_64.tar.gz"
+          gh release download $VERSION --pattern "studio-mcp_Darwin_x86_64.tar.gz"
+          gh release download $VERSION --pattern "studio-mcp_Windows_x86_64.zip"
+
+          # Extract and rename binaries
+          tar -xzf studio-mcp_Linux_x86_64.tar.gz studio-mcp
+          mv studio-mcp studio-mcp-linux
+
+          tar -xzf studio-mcp_Darwin_x86_64.tar.gz studio-mcp
+          mv studio-mcp studio-mcp-macos
+
+          unzip -j studio-mcp_Windows_x86_64.zip studio-mcp.exe
+          mv studio-mcp.exe studio-mcp-win.exe
+
+          # Upload renamed binaries to release
+          gh release upload $VERSION studio-mcp-linux studio-mcp-macos studio-mcp-win.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -29,7 +29,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var debugFlag bool
+var (
+	debugFlag   bool
+	versionFlag bool
+	// Version information set by main
+	Version string
+	Commit  string
+	Date    string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -38,6 +45,7 @@ var rootCmd = &cobra.Command{
 	Long: `studio-mcp is a tool for running a single command MCP server.
 
   -h, --help - Show this help message and exit.
+  --version - Show version information and exit.
   --debug - Print debug logs to stderr to diagnose MCP server issues.
 
 the command starts at the first non-flag argument:
@@ -56,14 +64,26 @@ arguments can be templated as their own shellword or as part of a shellword:
 Example:
   studio-mcp say -v siri "{{speech # a concise phrase to say outloud to the user}}"`,
 	Args: func(cmd *cobra.Command, args []string) error {
+		// If version flag is set, don't validate args
+		if versionFlag {
+			return nil
+		}
 		if len(args) == 0 {
 			return fmt.Errorf("usage: studio-mcp <command> --example \"{{req # required arg}}\" \"[args... # array of args]\"")
 		}
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Handle version flag
+		if versionFlag {
+			cmd.Printf("studio-mcp %s\n", Version)
+			cmd.Printf("commit: %s\n", Commit)
+			cmd.Printf("built: %s\n", Date)
+			return nil
+		}
+
 		// Create a new Studio instance
-		s, err := studio.New(args, debugFlag)
+		s, err := studio.New(args, debugFlag, Version)
 		if err != nil {
 			return err
 		}
@@ -75,7 +95,11 @@ Example:
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(version, commit, date string) {
+	Version = version
+	Commit = commit
+	Date = date
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -83,6 +107,7 @@ func Execute() {
 }
 
 func init() {
-	// Define the debug flag
+	// Define flags
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Print debug logs to stderr to diagnose MCP server issues")
+	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "Show version information")
 }

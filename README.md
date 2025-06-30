@@ -35,56 +35,59 @@ $ npx -y studio-mcp command "{{ required_argument # Description of argument }}" 
 
 You can run almost any command. Since you're just renting the place, please be a good tenant and don't `rm -rf` anything.
 
-## Move-Install
+## Move-In
 
 These install instructions are like my lease agreement: full of gotchas.
 Have your lawyer read it over. (You do have a lawyer right?)
 
-If you're lucky, you can just install it:
+You can install to your system with `npm`, use `npx` directly, or install with `go install github.com/martinemde/studio-mcp@latest`
 
 ```sh
 npm install -g studio-mcp
 ```
 
-After that, you'll be lucky if you can get this running without a full path somewhere. Cursor and Claude don't run in your shell.
+Or download directly from [GitHub Releases](https://github.com/martinemde/studio-mcp/releases/latest) and add to your PATH yourself.
+
+## Unpack (it's an apartment metaphor)
+
+Most MCPs don't run in your shell environment 😭 You'll probably need to add the full path somewhere.
+
+We'll use the MacOS `say` command as an example command. If you're not on a Mac, use `echo` (it's worse than useless, but it's easy to understand).
 
 ### Claude Desktop
 
-We'll use `echo` as an example command. It's almost perfectly useless, but it's easy to understand.
-
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Go to the Claude Desktop settings and click Developer > Edit Config.
+It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Application Support/Claude/claude_desktop_config.json` on Mac):
 
 ```json
 {
   "mcpServers": {
-    "echo": {
+    "say": {
       "command": "studio-mcp",
-      "args": ["echo", "{{text#What do you want to say?}}"]
+      "args": ["say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
-    "git-log": {
-      "command": "studio-mcp",
-      "args": ["git", "log", "--oneline", "-n", "20", "{{branch#Git branch name}}"]
-    }
   }
 }
 ```
 
 ### Cursor
 
-Add to your `.cursor/mcp.json`:
+Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to Tools section of the Cursor UI.
 
 ```json
 {
   "mcpServers": {
-    "echo": {
+    "say": {
       "command": "npx",
-      "args": ["-y", "studio-mcp", "echo", "{{text#What do you want to say?}}"]
+      "args": ["-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
 ```
 
 ### VSCode
+
+It's a lot of the same here.
 
 ```json
 {
@@ -105,22 +108,30 @@ Add to your `.cursor/mcp.json`:
 Studio uses blueprints (templates) to keep your studio tidy.
 
 ```bash
-studio-mcp npx -y "{{node_pkg#A somewhat crazy thing to do}}" "[args...#Any additional args needed for pwning your system]"
+studio-mcp say -v "{{voice# Choose your Mac say voice}}" "[args...#Any additional args]"
 ```
 
-This creates a Studio server with two arguments: `node_pkg` and `args`.
+This creates a Studio server with two arguments: `voice` and `args`.
 Everything after the `#` will be used as the description for the LLM to understand.
 
-Blueprints use the format: `{{name # description}}` and `[name # description]` for string and array arguments.
+Blueprint templates are a modified mustache format with descriptions: `{{name # description}}` but they also add shell like optional `[--flag]` booleans, `[optional # an optional string]` and `[args... # array with 0 or more strings]` for additional args:
 
 - `{{name}}`: Required string argument
 - `[name]`: Optional string argument
-- `[name...]`: Opyional array argument (spreads as multiple command line args)
-- `name`: The argument name that will be shown in the MCP tool schema. Only letter numbers and underscores (dashes become underscores, case-insensitive).
-- `description`: A description of what the argument should contain. May contain spaces.
+- `[name...]`: Optional array argument (spreads as multiple command line args)
+- `[--flag]`: Optional boolean named `flag` that prints `--flag` only when true.
+- `{{name...}}`: Required array (1 or more arguments required).
+
+Inside a tag, there is a name and description:
+
+- `name`: The argument name that will be shown in the MCP tool schema. Only letter numbers and underscores (dashes and underscores are interchangeable, case-insensitive).
+- `description`: A description of what the argument should contain. Reads everything after the `#` to the end of the template tag.
+
+### What about {{cool_template_feature: string /[A-Z]+/ # Fancy tags}}?
 
 This is a simple studio, not one of those fancy 1 bedroom flats.
-Blueprint types, flags, validation? The landlord will probably upgrade the place for free eventually... right?
+
+Maybe the landlord will get around to it at some point (but you're rent will go up).
 
 ## Utilities Included
 
@@ -135,18 +146,17 @@ npm run dev -- echo "{{text#What to echo?}}"
 ### Did something break?
 
 The landlord definitely takes care of the place:
+
 - more than none tests
 - files! lots of 'em!
 - maybe even some test coverage
-- you still need proof of renters insurance
+- you still need Proof of Renters Insurance
 
 ```bash
-npm test              # Run all tests
-npm run test:watch    # Run tests in watch mode
-npm run test:coverage # Run tests with coverage report
+make test
 ```
 
-Uncovered portions are the tenant's responsibility. (no one ever understand how hard it is for us landlords)
+Uncovered portions are tenant's responsibility. (no one appreciates how hard it is for us landlords)
 
 ## Home Is Where You Make It
 
