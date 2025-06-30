@@ -347,3 +347,123 @@ func TestBlueprint_BuildCommandArgsWithBooleanFlags(t *testing.T) {
 		assert.Equal(t, []string{"ls", "-l", "--human-readable"}, args)
 	})
 }
+
+func TestTokenizedBlueprint_BuildCommandArgs(t *testing.T) {
+	t.Run("builds simple command without templates", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "hello", "world"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "hello", "world"}, args)
+	})
+
+	t.Run("builds command with required template", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "{{message}}"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"message": "Hello World",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "Hello World"}, args)
+	})
+
+	t.Run("builds command with template in middle of arg", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"curl", "https://api.example.com/{{endpoint}}"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"endpoint": "users/123",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"curl", "https://api.example.com/users/123"}, args)
+	})
+
+	t.Run("builds command with multiple templates in one arg", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "{{greeting}} {{name}}!"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"greeting": "Hello",
+			"name":     "World",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "Hello World!"}, args)
+	})
+
+	t.Run("builds command with optional field provided", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "hello", "[name]"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"name": "world",
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "hello", "world"}, args)
+	})
+
+	t.Run("builds command with optional field omitted", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "hello", "[name]"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "hello"}, args)
+	})
+
+	t.Run("builds command with boolean flag enabled", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"ls", "[--verbose]"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"verbose": true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls", "--verbose"}, args)
+	})
+
+	t.Run("builds command with boolean flag disabled", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"ls", "[--verbose]"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"verbose": false,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"ls"}, args)
+	})
+
+	t.Run("builds command with array argument", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "[files...]"})
+		require.NoError(t, err)
+
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"files": []string{"file1.txt", "file2.txt", "file3.txt"},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "file1.txt", "file2.txt", "file3.txt"}, args)
+	})
+
+	t.Run("handles dash-underscore equivalence", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "{{my-var}}", "[--my-flag]"})
+		require.NoError(t, err)
+
+		// Should accept both dash and underscore versions
+		args, err := tbp.BuildCommandArgs(map[string]interface{}{
+			"my_var":  "hello",
+			"my_flag": true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"echo", "hello", "--my-flag"}, args)
+	})
+
+	t.Run("returns error for missing required parameter", func(t *testing.T) {
+		tbp, err := TokenizeFromArgs([]string{"echo", "{{message}}"})
+		require.NoError(t, err)
+
+		_, err = tbp.BuildCommandArgs(map[string]interface{}{})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing required parameter")
+	})
+}
