@@ -12,66 +12,65 @@ func TestTool_Execute(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           []string
-		expectSuccess  bool
+		expectError    bool
 		expectOutput   string
 		containsOutput string
 	}{
 		{
-			name:          "executes simple command successfully",
-			args:          []string{"echo", "hello"},
-			expectSuccess: true,
-			expectOutput:  "hello",
+			name:         "executes simple command successfully",
+			args:         []string{"echo", "hello"},
+			expectOutput: "hello",
 		},
 		{
-			name:          "executes command with multiple arguments",
-			args:          []string{"echo", "hello", "world"},
-			expectSuccess: true,
-			expectOutput:  "hello world",
+			name:         "executes command with multiple arguments",
+			args:         []string{"echo", "hello", "world"},
+			expectOutput: "hello world",
 		},
 		{
 			name:           "captures stderr output",
 			args:           []string{"sh", "-c", "echo 'error message' >&2"},
-			expectSuccess:  true,
 			containsOutput: "error message",
 		},
 		{
-			name:          "handles command failure",
-			args:          []string{"false"},
-			expectSuccess: false,
-			expectOutput:  "",
+			name:        "handles command failure",
+			args:        []string{"false"},
+			expectError: true,
 		},
 		{
 			name:           "handles non-existent command",
 			args:           []string{"this-command-does-not-exist-12345"},
-			expectSuccess:  false,
+			expectError:    true,
 			containsOutput: "Studio error:",
 		},
 		{
-			name:          "handles empty command",
-			args:          []string{""},
-			expectSuccess: false,
-			expectOutput:  "Studio error: Empty command provided",
+			name:         "handles empty command",
+			args:         []string{""},
+			expectError:  true,
+			expectOutput: "Studio error: Empty command provided",
 		},
 		{
-			name:          "handles command with spaces",
-			args:          []string{"echo", "hello world with spaces"},
-			expectSuccess: true,
-			expectOutput:  "hello world with spaces",
+			name:         "handles command with spaces",
+			args:         []string{"echo", "hello world with spaces"},
+			expectOutput: "hello world with spaces",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := Execute(tt.args[0], tt.args[1:]...)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expectSuccess, result.Success)
+			output, err := Execute(tt.args[0], tt.args[1:]...)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 
 			if tt.expectOutput != "" {
-				assert.Equal(t, tt.expectOutput, strings.TrimSpace(result.Output))
+				assert.Equal(t, tt.expectOutput, strings.TrimSpace(output))
 			}
 
 			if tt.containsOutput != "" {
-				assert.Contains(t, result.Output, tt.containsOutput)
+				assert.Contains(t, output, tt.containsOutput)
 			}
 		})
 	}
