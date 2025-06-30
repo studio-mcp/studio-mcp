@@ -1,10 +1,12 @@
 package tool
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -130,13 +132,23 @@ func TestTool_CreateToolFunction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fn := CreateToolFunction(tt.blueprint)
-			result := fn(tt.args)
+			handler := CreateToolFunction(tt.blueprint)
 
+			// Create MCP parameters
+			params := &mcp.CallToolParamsFor[map[string]any]{
+				Arguments: tt.args,
+			}
+
+			result, err := handler(context.Background(), nil, params)
+
+			assert.NoError(t, err)
 			assert.Len(t, result.Content, 1)
-			assert.Equal(t, "text", result.Content[0]["type"])
 
-			text := result.Content[0]["text"].(string)
+			// Cast to TextContent to access the text
+			textContent, ok := result.Content[0].(*mcp.TextContent)
+			assert.True(t, ok, "Expected content to be TextContent")
+
+			text := textContent.Text
 
 			if tt.expectContains != "" {
 				assert.Contains(t, text, tt.expectContains)

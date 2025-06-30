@@ -2,25 +2,19 @@ package tool
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
-)
 
-// ToolResult represents the result returned to MCP
-type ToolResult struct {
-	Content []map[string]interface{} `json:"content"`
-	IsError bool                     `json:"isError"`
-}
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
 
 // Blueprint interface defines what we need from a blueprint
 type Blueprint interface {
 	BuildCommandArgs(args map[string]interface{}) ([]string, error)
 }
-
-// ToolFunction is the function signature for MCP tools
-type ToolFunction func(args map[string]interface{}) ToolResult
 
 var debugMode bool
 
@@ -72,19 +66,14 @@ func Execute(command string, args ...string) (string, error) {
 	return output, nil
 }
 
-// CreateToolFunction creates a tool function for the given blueprint
-func CreateToolFunction(blueprint Blueprint) ToolFunction {
-	return func(args map[string]interface{}) ToolResult {
-		debug("Tool called with args: %v", args)
+// CreateToolFunction creates a tool handler for the given blueprint
+func CreateToolFunction(blueprint Blueprint) mcp.ToolHandlerFor[map[string]any, map[string]any] {
+	return func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[map[string]any]) (*mcp.CallToolResultFor[map[string]any], error) {
+		debug("Tool called with args: %v", params.Arguments)
 
-		fullCommand, err := blueprint.BuildCommandArgs(args)
+		fullCommand, err := blueprint.BuildCommandArgs(params.Arguments)
 		if err != nil {
-			return ToolResult{
-				Content: []map[string]interface{}{
-					{"type": "text", "text": fmt.Sprintf("Validation error: %s", err.Error())},
-				},
-				IsError: true,
-			}
+			return createToolResult(fmt.Sprintf("Validation error: %s", err.Error()), true), nil
 		}
 
 		debug("Built command: %s", strings.Join(fullCommand, " "))
@@ -96,11 +85,15 @@ func CreateToolFunction(blueprint Blueprint) ToolFunction {
 			debug("Execution error: %s", err)
 		}
 
-		return ToolResult{
-			Content: []map[string]interface{}{
-				{"type": "text", "text": strings.TrimSpace(output)},
-			},
-			IsError: isError,
-		}
+		return createToolResult(output, isError), nil
+	}
+}
+
+func createToolResult(output string, isError bool) *mcp.CallToolResultFor[map[string]any] {
+	return &mcp.CallToolResultFor[map[string]any]{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: output},
+		},
+		IsError: isError,
 	}
 }

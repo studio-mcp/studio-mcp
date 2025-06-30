@@ -42,35 +42,11 @@ func (s *Studio) Serve() error {
 	// Create server with version from build
 	server := mcp.NewServer("studio-mcp", s.Version, nil)
 
-	// Create tool function from blueprint
-	toolFunc := tool.CreateToolFunction(s.Blueprint)
-
-	// Create handler that wraps our tool function
-	handler := func(ctx context.Context, session *mcp.ServerSession, params *mcp.CallToolParamsFor[map[string]any]) (*mcp.CallToolResultFor[map[string]any], error) {
-		// Call our tool function
-		result := toolFunc(params.Arguments)
-
-		// Convert to MCP result format
-		var content []mcp.Content
-		for _, contentItem := range result.Content {
-			if textType, ok := contentItem["type"].(string); ok && textType == "text" {
-				if text, ok := contentItem["text"].(string); ok {
-					content = append(content, &mcp.TextContent{Text: text})
-				}
-			}
-		}
-
-		return &mcp.CallToolResultFor[map[string]any]{
-			Content: content,
-			IsError: result.IsError,
-		}, nil
-	}
-
 	// Add the tool to the server using NewServerTool with schema directly from blueprint
 	serverTool := mcp.NewServerTool(
 		s.Blueprint.ToolName,
 		s.Blueprint.ToolDescription,
-		handler,
+		tool.CreateToolFunction(s.Blueprint),
 		mcp.Input(mcp.Schema(s.Blueprint.InputSchema)),
 	)
 
