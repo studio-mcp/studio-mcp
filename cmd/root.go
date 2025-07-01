@@ -24,19 +24,52 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"studio-mcp/internal/studio"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	debugFlag   bool
-	versionFlag bool
 	// Version information set by main
 	Version string
 	Commit  string
 	Date    string
 )
+
+// parseArgs parses arguments manually, stopping flag parsing at first non-flag
+func parseArgs(args []string) (debugFlag bool, versionFlag bool, commandArgs []string, err error) {
+	i := 0
+
+	// Parse studio-mcp flags until we hit a non-flag
+	for i < len(args) {
+		arg := args[i]
+
+		// If it doesn't start with -, we're done with studio-mcp flags
+		if !strings.HasPrefix(arg, "-") {
+			break
+		}
+
+		switch arg {
+		case "--debug":
+			debugFlag = true
+		case "--version":
+			versionFlag = true
+		case "-h", "--help":
+			// Let cobra handle help
+			return false, false, nil, fmt.Errorf("help requested")
+		default:
+			return false, false, nil, fmt.Errorf("unknown flag: %s", arg)
+		}
+
+		i++
+	}
+
+	// Everything from i onwards goes to blueprint parsing
+	commandArgs = args[i:]
+
+	return debugFlag, versionFlag, commandArgs, nil
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -63,17 +96,37 @@ arguments can be templated as their own shellword or as part of a shellword:
 
 Example:
   studio-mcp say -v siri "{{speech # a concise phrase to say outloud to the user}}"`,
+	DisableFlagParsing: true, // Disable cobra's flag parsing so we can do custom parsing
 	Args: func(cmd *cobra.Command, args []string) error {
-		// If version flag is set, don't validate args
+		// Custom argument parsing
+		_, versionFlag, commandArgs, err := parseArgs(args)
+		if err != nil {
+			if err.Error() == "help requested" {
+				return nil // Let cobra handle help
+			}
+			return err
+		}
+
+		// If version flag is set, don't validate command args
 		if versionFlag {
 			return nil
 		}
-		if len(args) == 0 {
+
+		if len(commandArgs) == 0 {
 			return fmt.Errorf("usage: studio-mcp <command> --example \"{{req # required arg}}\" \"[args... # array of args]\"")
 		}
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Parse arguments manually
+		debugFlag, versionFlag, commandArgs, err := parseArgs(args)
+		if err != nil {
+			if err.Error() == "help requested" {
+				return cmd.Help()
+			}
+			return err
+		}
+
 		// Handle version flag
 		if versionFlag {
 			cmd.Printf("studio-mcp %s\n", Version)
@@ -82,8 +135,8 @@ Example:
 			return nil
 		}
 
-		// Create a new Studio instance
-		s, err := studio.New(args, debugFlag, Version)
+		// Create a new Studio instance with the command args
+		s, err := studio.New(commandArgs, debugFlag, Version)
 		if err != nil {
 			return err
 		}
@@ -107,7 +160,5 @@ func Execute(version, commit, date string) {
 }
 
 func init() {
-	// Define flags
-	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Print debug logs to stderr to diagnose MCP server issues")
-	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "Show version information")
+	// No flags defined here since we're doing custom parsing
 }

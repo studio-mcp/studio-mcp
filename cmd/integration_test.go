@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -43,13 +44,19 @@ func sendMCPRequest(t *testing.T, commandArgs []string, request MCPRequest, time
 	projectRoot, err := filepath.Abs("..")
 	require.NoError(t, err)
 
-	buildCmd := exec.Command("go", "build", "-o", "studio-mcp", ".")
+	// Ensure bin directory exists
+	binDir := filepath.Join(projectRoot, "bin")
+	err = os.MkdirAll(binDir, 0755)
+	require.NoError(t, err)
+
+	// Build to bin/studio-mcp
+	binaryPath := filepath.Join(binDir, "studio-mcp")
+	buildCmd := exec.Command("go", "build", "-o", binaryPath, ".")
 	buildCmd.Dir = projectRoot
 	err = buildCmd.Run()
 	require.NoError(t, err, "Failed to build project")
 
 	// Prepare the command
-	binaryPath := filepath.Join(projectRoot, "studio-mcp")
 	args := append([]string{}, commandArgs...)
 	cmd := exec.Command(binaryPath, args...)
 
@@ -681,6 +688,116 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 			assert.Contains(t, properties, "generator")
 			assert.Contains(t, properties, "name")
 			assert.NotContains(t, properties, "args")
+		})
+	})
+}
+
+// TestArgumentParsingRegression tests the specific issue where flags in command
+// templates (like -v in "say -v siri") were incorrectly parsed as studio-mcp flags
+func TestArgumentParsingRegression(t *testing.T) {
+	timeout := 5 * time.Second
+
+	t.Run("SayCommandWithVoiceFlag", func(t *testing.T) {
+		t.Run("should not parse -v as studio-mcp flag", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "say-test-1",
+				Method:  "tools/list",
+			}
+
+			// This should work without errors - previously this would fail with
+			// "Error: unknown shorthand flag: 'v' in -v"
+			response := sendMCPRequest(t, []string{
+				"say", "-v", "siri", "{{speech#A very concise message to say out loud to the user}}",
+			}, request, timeout)
+
+			assert.Equal(t, "2.0", response.JSONRPC)
+			assert.Equal(t, "say-test-1", response.ID)
+			assert.Nil(t, response.Error, "Should not have parsing errors")
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+
+			tools, ok := result["tools"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, tools, 1)
+
+			tool, ok := tools[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "say", tool["name"])
+			assert.Equal(t, "Run the shell command `say -v siri {{speech}}`", tool["description"])
+
+			inputSchema, ok := tool["inputSchema"].(map[string]interface{})
+			require.True(t, ok)
+
+			properties, ok := inputSchema["properties"].(map[string]interface{})
+			require.True(t, ok)
+			assert.Contains(t, properties, "speech")
+
+			speechProp, ok := properties["speech"].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "string", speechProp["type"])
+			assert.Equal(t, "A very concise message to say out loud to the user", speechProp["description"])
+		})
+
+		t.Run("should work with debug flag before say command", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "say-test-2",
+				Method:  "tools/list",
+			}
+
+			// Test that --debug flag is parsed correctly while -v is not
+			response := sendMCPRequest(t, []string{
+				"--debug", "say", "-v", "siri", "{{speech#message}}",
+			}, request, timeout)
+
+			assert.Equal(t, "2.0", response.JSONRPC)
+			assert.Equal(t, "say-test-2", response.ID)
+			assert.Nil(t, response.Error, "Should not have parsing errors")
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+
+			tools, ok := result["tools"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, tools, 1)
+
+			tool, ok := tools[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "say", tool["name"])
+			assert.Equal(t, "Run the shell command `say -v siri {{speech}}`", tool["description"])
+		})
+	})
+
+	t.Run("CurlCommandWithMultipleFlags", func(t *testing.T) {
+		t.Run("should handle multiple flags in command template", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "curl-test-1",
+				Method:  "tools/list",
+			}
+
+			// Test a more complex command with multiple flags
+			response := sendMCPRequest(t, []string{
+				"curl", "-X", "POST", "-H", "Content-Type: application/json", "{{url#The URL to request}}",
+			}, request, timeout)
+
+			assert.Equal(t, "2.0", response.JSONRPC)
+			assert.Equal(t, "curl-test-1", response.ID)
+			assert.Nil(t, response.Error, "Should not have parsing errors")
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+
+			tools, ok := result["tools"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, tools, 1)
+
+			tool, ok := tools[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "curl", tool["name"])
+			assert.Equal(t, "Run the shell command `curl -X POST -H Content-Type: application/json {{url}}`", tool["description"])
 		})
 	})
 }

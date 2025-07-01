@@ -46,4 +46,4 @@ dev: ## Run in development mode
 	go run -ldflags "-X main.version=dev -X main.commit=$(COMMIT) -X main.date=$(DATE)" . $(ARGS)
 
 clean: ## Clean build artifacts
-	rm -rf bin/ dist/
+	rm -rf bin/studio-mcp dist/ studio-mcp

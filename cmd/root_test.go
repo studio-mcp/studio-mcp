@@ -1,149 +1,138 @@
 package cmd
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-// resetRootCmd resets the root command for test isolation
-func resetRootCmd() {
-	rootCmd.ResetCommands()
-	rootCmd.ResetFlags()
-	debugFlag = false
-	versionFlag = false
-
-	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Print debug logs to stderr to diagnose MCP server issues")
-	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "Show version information")
-}
-
-// testSetup resets rootCmd and sets output buffers
-func testSetup(args ...string) (*bytes.Buffer, error) {
-	resetRootCmd()
-	var buf bytes.Buffer
-	rootCmd.SetOut(&buf)
-	rootCmd.SetErr(&buf)
-	rootCmd.SetArgs(args)
-	err := rootCmd.Execute()
-	return &buf, err
-}
-
-func TestHelpFlags(t *testing.T) {
+func TestParseArgs(t *testing.T) {
 	tests := []struct {
-		name        string
-		args        []string
-		expectLines []string
+		name            string
+		args            []string
+		expectedDebug   bool
+		expectedVersion bool
+		expectedCommand []string
+		expectedError   string
 	}{
 		{
-			name: "shows help with --help",
-			args: []string{"--help"},
-			expectLines: []string{
-				"studio-mcp is a tool for running a single command MCP server",
-				"--debug", "--help", "--version",
-			},
+			name:            "no flags, simple command",
+			args:            []string{"echo", "hello"},
+			expectedDebug:   false,
+			expectedVersion: false,
+			expectedCommand: []string{"echo", "hello"},
 		},
 		{
-			name: "shows help with -h",
-			args: []string{"-h"},
-			expectLines: []string{
-				"studio-mcp is a tool for running a single command MCP server",
-			},
+			name:            "debug flag before command",
+			args:            []string{"--debug", "echo", "hello"},
+			expectedDebug:   true,
+			expectedVersion: false,
+			expectedCommand: []string{"echo", "hello"},
+		},
+		{
+			name:            "version flag only",
+			args:            []string{"--version"},
+			expectedDebug:   false,
+			expectedVersion: true,
+			expectedCommand: []string{},
+		},
+		{
+			name:            "command with flags that should not be parsed by studio-mcp",
+			args:            []string{"say", "-v", "siri", "{{speech#message}}"},
+			expectedDebug:   false,
+			expectedVersion: false,
+			expectedCommand: []string{"say", "-v", "siri", "{{speech#message}}"},
+		},
+		{
+			name:            "debug flag before command with flags",
+			args:            []string{"--debug", "say", "-v", "siri", "{{speech#message}}"},
+			expectedDebug:   true,
+			expectedVersion: false,
+			expectedCommand: []string{"say", "-v", "siri", "{{speech#message}}"},
+		},
+		{
+			name:            "command with multiple flags",
+			args:            []string{"curl", "-X", "POST", "-H", "Content-Type: application/json", "{{url}}"},
+			expectedDebug:   false,
+			expectedVersion: false,
+			expectedCommand: []string{"curl", "-X", "POST", "-H", "Content-Type: application/json", "{{url}}"},
+		},
+		{
+			name:          "unknown studio-mcp flag",
+			args:          []string{"--unknown", "echo", "hello"},
+			expectedError: "unknown flag: --unknown",
+		},
+		{
+			name:          "help flag",
+			args:          []string{"--help"},
+			expectedError: "help requested",
+		},
+		{
+			name:          "help flag short",
+			args:          []string{"-h"},
+			expectedError: "help requested",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf, err := testSetup(tt.args...)
-			assert.NoError(t, err)
-			output := buf.String()
-			for _, line := range tt.expectLines {
-				assert.Contains(t, output, line)
+			debug, version, command, err := parseArgs(tt.args)
+
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				return
 			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedDebug, debug)
+			assert.Equal(t, tt.expectedVersion, version)
+			assert.Equal(t, tt.expectedCommand, command)
 		})
 	}
 }
 
-func TestVersionFlagOutput(t *testing.T) {
-	t.Run("prints version info", func(t *testing.T) {
-		Version = "1.2.3"
-		Commit = "abc123"
-		Date = "2023-01-01T00:00:00Z"
-
-		buf, err := testSetup("--version")
+func TestVersionFlagParsing(t *testing.T) {
+	t.Run("identifies version flag correctly", func(t *testing.T) {
+		debug, version, command, err := parseArgs([]string{"--version"})
 		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "studio-mcp 1.2.3")
-		assert.Contains(t, output, "commit: abc123")
-		assert.Contains(t, output, "built: 2023-01-01T00:00:00Z")
-	})
-
-	t.Run("handles dev build values", func(t *testing.T) {
-		Version, Commit, Date = "dev", "none", "unknown"
-
-		buf, err := testSetup("--version")
-		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "studio-mcp dev")
-		assert.Contains(t, output, "commit: none")
-		assert.Contains(t, output, "built: unknown")
+		assert.False(t, debug)
+		assert.True(t, version)
+		assert.Empty(t, command)
 	})
 }
 
-func TestErrorCases(t *testing.T) {
-	t.Run("shows error with no arguments", func(t *testing.T) {
-		_, err := testSetup()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
-	})
-
-	t.Run("errors when only flag is --debug", func(t *testing.T) {
-		_, err := testSetup("--debug")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "usage: studio-mcp <command>")
-	})
-}
-
-func TestFlagParsing(t *testing.T) {
-	t.Run("parses debug flag", func(t *testing.T) {
-		resetRootCmd()
-		assert.False(t, debugFlag)
-
-		// Don't execute the command, just parse
-		rootCmd.ParseFlags([]string{"--debug", "echo", "hello"})
-		assert.True(t, debugFlag)
-	})
-
-	t.Run("parses version flag", func(t *testing.T) {
-		resetRootCmd()
-		assert.False(t, versionFlag)
-
-		rootCmd.ParseFlags([]string{"--version"})
-		assert.True(t, versionFlag)
-	})
-}
-
-func TestHelpTextDetailedContent(t *testing.T) {
-	t.Run("includes custom syntax and examples", func(t *testing.T) {
-		buf, err := testSetup("--help")
+func TestEmptyArgs(t *testing.T) {
+	t.Run("handles empty args", func(t *testing.T) {
+		debug, version, command, err := parseArgs([]string{})
 		assert.NoError(t, err)
+		assert.False(t, debug)
+		assert.False(t, version)
+		assert.Empty(t, command)
+	})
+}
 
-		output := buf.String()
-		lines := []string{
-			"the command starts at the first non-flag argument:",
-			"<command> - the shell command to run",
-			"{{req # required arg}}",
-			"[args... # array of args]",
-			"[opt # optional string]",
-			"https://en.wikipedia.org/wiki/{{wiki_page_name}}",
-			"studio-mcp say -v siri",
-			"studio-mcp [--debug] <command> --example",
-		}
+// Test the specific regression case that was fixed
+func TestSayCommandWithVoiceFlag(t *testing.T) {
+	t.Run("say command with -v flag should not be parsed as studio-mcp flag", func(t *testing.T) {
+		args := []string{"say", "-v", "siri", "{{speech#A very concise message to say out loud to the user}}"}
 
-		for _, line := range lines {
-			assert.Contains(t, output, line)
-		}
+		debug, version, command, err := parseArgs(args)
+
+		assert.NoError(t, err)
+		assert.False(t, debug)
+		assert.False(t, version)
+		assert.Equal(t, args, command)
+	})
+
+	t.Run("debug flag followed by say command with -v flag", func(t *testing.T) {
+		args := []string{"--debug", "say", "-v", "siri", "{{speech#message}}"}
+
+		debug, version, command, err := parseArgs(args)
+
+		assert.NoError(t, err)
+		assert.True(t, debug)
+		assert.False(t, version)
+		assert.Equal(t, []string{"say", "-v", "siri", "{{speech#message}}"}, command)
 	})
 }

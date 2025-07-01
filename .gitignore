@@ -7,8 +7,9 @@ yarn-error.log*
 .nyc_output
 coverage/
 
+# Binaries
 studio-mcp
-bin/
+bin/studio-mcp
 .DS_Store
 *.tgz
 .npm
