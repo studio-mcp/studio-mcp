@@ -192,6 +192,11 @@ func TestBlueprint_GetCommandFormat(t *testing.T) {
 			args:     []string{"cp", "{{-r#recursive}}"},
 			expected: "cp {{-r}}",
 		},
+		{
+			name:     "complicated template with mixed text and fields",
+			args:     []string{"curl", "http[s # use https]://api.com/{{endpoint#API endpoint}}", "[--verbose]"},
+			expected: "curl http[s]://api.com/{{endpoint}} [--verbose]",
+		},
 	}
 
 	for _, tt := range tests {
@@ -226,6 +231,17 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 		assert.Equal(t, expected, bp.ShellWords)
 	})
 
+	t.Run("tokenizes command with optional field", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "[optional]"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{FieldToken{Name: "optional", Description: "", Required: false, OriginalFlag: ""}},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+	})
+
 	t.Run("tokenizes command with template and description", func(t *testing.T) {
 		bp, err := FromArgs([]string{"echo", "{{text#message to echo}}"})
 		require.NoError(t, err)
@@ -233,6 +249,34 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
 			{FieldToken{Name: "text", Description: "message to echo", Required: true, OriginalFlag: ""}},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+	})
+
+	t.Run("tokenizes command with prefix text and template", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "prefix{{text#desc}}"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				TextToken{Value: "prefix"},
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
+			},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+	})
+
+	t.Run("tokenizes command with suffix text and template", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "{{text#desc}}suffix"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
+				TextToken{Value: "suffix"},
+			},
 		}
 		assert.Equal(t, expected, bp.ShellWords)
 	})
@@ -252,13 +296,45 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 		assert.Equal(t, expected, bp.ShellWords)
 	})
 
-	t.Run("tokenizes command with optional field", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[optional]"})
+	t.Run("tokenizes command with prefix text and optional field", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "prefix[text]"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "optional", Description: "", Required: false, OriginalFlag: ""}},
+			{
+				TextToken{Value: "prefix"},
+				FieldToken{Name: "text", Description: "", Required: false, OriginalFlag: ""},
+			},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+	})
+
+	t.Run("tokenizes command with suffix text and optional field", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "[text#description]suffix"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				FieldToken{Name: "text", Description: "description", Required: false, OriginalFlag: ""},
+				TextToken{Value: "suffix"},
+			},
+		}
+		assert.Equal(t, expected, bp.ShellWords)
+	})
+
+	t.Run("tokenizes command with mixed text and optional field", func(t *testing.T) {
+		bp, err := FromArgs([]string{"echo", "prefix[text]suffix"})
+		require.NoError(t, err)
+
+		expected := [][]Token{
+			{TextToken{Value: "echo"}},
+			{
+				TextToken{Value: "prefix"},
+				FieldToken{Name: "text", Description: "", Required: false, OriginalFlag: ""},
+				TextToken{Value: "suffix"},
+			},
 		}
 		assert.Equal(t, expected, bp.ShellWords)
 	})
@@ -275,13 +351,15 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 	})
 
 	t.Run("tokenizes complex mixed command", func(t *testing.T) {
-		bp, err := FromArgs([]string{"curl", "https://api.com/{{endpoint#API endpoint}}", "[--verbose]"})
+		bp, err := FromArgs([]string{"curl", "http[s # use https]://api.com/{{endpoint#API endpoint}}", "[--verbose]"})
 		require.NoError(t, err)
 
 		expected := [][]Token{
 			{TextToken{Value: "curl"}},
 			{
-				TextToken{Value: "https://api.com/"},
+				TextToken{Value: "http"},
+				FieldToken{Name: "s", Description: "use https", Required: false, OriginalFlag: ""},
+				TextToken{Value: "://api.com/"},
 				FieldToken{Name: "endpoint", Description: "API endpoint", Required: true, OriginalFlag: ""},
 			},
 			{FieldToken{Name: "verbose", Description: "Enable --verbose flag", Required: false, OriginalFlag: "--verbose"}},

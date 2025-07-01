@@ -50,9 +50,23 @@ func tokenizeShellWord(word string) []Token {
 	// Parse mixed content with templates
 	currentPos := 0
 	for currentPos < len(word) {
-		// Look for next template start
-		templateStart := strings.Index(word[currentPos:], "{{")
-		if templateStart == -1 {
+		// Look for next template start (either {{ or [)
+		nextTemplateStart := -1
+		templateType := ""
+
+		// Find the closest template start
+		requiredStart := strings.Index(word[currentPos:], "{{")
+		optionalStart := strings.Index(word[currentPos:], "[")
+
+		if requiredStart != -1 && (optionalStart == -1 || requiredStart < optionalStart) {
+			nextTemplateStart = requiredStart + currentPos
+			templateType = "required"
+		} else if optionalStart != -1 {
+			nextTemplateStart = optionalStart + currentPos
+			templateType = "optional"
+		}
+
+		if nextTemplateStart == -1 {
 			// No more templates, add remaining text
 			if currentPos < len(word) {
 				tokens = append(tokens, TextToken{Value: word[currentPos:]})
@@ -60,25 +74,36 @@ func tokenizeShellWord(word string) []Token {
 			break
 		}
 
-		templateStart += currentPos
-
 		// Add text before template
-		if templateStart > currentPos {
-			tokens = append(tokens, TextToken{Value: word[currentPos:templateStart]})
+		if nextTemplateStart > currentPos {
+			tokens = append(tokens, TextToken{Value: word[currentPos:nextTemplateStart]})
 		}
 
-		// Find template end
-		templateEnd := strings.Index(word[templateStart:], "}}")
-		if templateEnd == -1 {
-			// Malformed template, treat rest as text
-			tokens = append(tokens, TextToken{Value: word[templateStart:]})
-			break
-		}
+		// Find template end based on type
+		var templateEnd int
+		var templateText string
 
-		templateEnd += templateStart + 2
+		if templateType == "required" {
+			endIndex := strings.Index(word[nextTemplateStart:], "}}")
+			if endIndex == -1 {
+				// Malformed template, treat rest as text
+				tokens = append(tokens, TextToken{Value: word[nextTemplateStart:]})
+				break
+			}
+			templateEnd = nextTemplateStart + endIndex + 2
+			templateText = word[nextTemplateStart:templateEnd]
+		} else { // optional
+			endIndex := strings.Index(word[nextTemplateStart:], "]")
+			if endIndex == -1 {
+				// Malformed template, treat rest as text
+				tokens = append(tokens, TextToken{Value: word[nextTemplateStart:]})
+				break
+			}
+			templateEnd = nextTemplateStart + endIndex + 1
+			templateText = word[nextTemplateStart:templateEnd]
+		}
 
 		// Parse the template
-		templateText := word[templateStart:templateEnd]
 		token := parseField(templateText)
 		if token != nil {
 			tokens = append(tokens, token)
