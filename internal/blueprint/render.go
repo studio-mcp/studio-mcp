@@ -36,8 +36,10 @@ func findParamValue(params map[string]interface{}, fieldName string) (interface{
 
 // buildCommandArgsTokenized builds the actual command arguments using the tokenized approach
 func (bp *Blueprint) buildCommandArgsTokenized(params map[string]interface{}) ([]string, error) {
+	inputSchema := bp.GenerateInputSchema()
+
 	// Validate required parameters
-	for _, required := range bp.InputSchema.Required {
+	for _, required := range inputSchema.Required {
 		if _, exists := findParamValue(params, required); !exists {
 			return nil, fmt.Errorf("missing required parameter: %s", required)
 		}
@@ -45,7 +47,7 @@ func (bp *Blueprint) buildCommandArgsTokenized(params map[string]interface{}) ([
 
 	// Validate parameter types
 	for name, param := range params {
-		if schema, exists := bp.InputSchema.Properties[normalizeFieldName(name)]; exists {
+		if schema, exists := inputSchema.Properties[normalizeFieldName(name)]; exists {
 			if schema.Type == "array" {
 				// Check if it's an array type
 				switch v := param.(type) {
@@ -113,8 +115,9 @@ func (bp *Blueprint) renderShellWord(tokens []Token, params map[string]interface
 	// Handle special cases for single field tokens
 	if len(tokens) == 1 {
 		if fieldToken, ok := tokens[0].(FieldToken); ok {
+			inputSchema := bp.GenerateInputSchema()
 			// Check if this is an array field first (arrays take precedence)
-			if schema, exists := bp.InputSchema.Properties[normalizeFieldName(fieldToken.Name)]; exists && schema.Type == "array" {
+			if schema, exists := inputSchema.Properties[normalizeFieldName(fieldToken.Name)]; exists && schema.Type == "array" {
 				return bp.renderArrayField(fieldToken, params)
 			}
 
@@ -154,8 +157,9 @@ func (bp *Blueprint) renderSingleOptionalField(fieldToken FieldToken, params map
 		return false, nil
 	}
 
+	inputSchema := bp.GenerateInputSchema()
 	// Check if this is a boolean flag
-	if schema, schemaExists := bp.InputSchema.Properties[normalizeFieldName(fieldToken.Name)]; schemaExists && schema.Type == "boolean" {
+	if schema, schemaExists := inputSchema.Properties[normalizeFieldName(fieldToken.Name)]; schemaExists && schema.Type == "boolean" {
 		if boolValue, ok := value.(bool); ok {
 			if boolValue {
 				// Use the original flag format if available, otherwise construct it

@@ -2,8 +2,6 @@ package blueprint
 
 import (
 	"strings"
-
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 )
 
 // Token represents a part of a shell word after parsing
@@ -25,6 +23,7 @@ type FieldToken struct {
 	Name         string
 	Description  string
 	Required     bool
+	IsArray      bool   // Indicates if this field represents an array (has ...)
 	OriginalFlag string // For boolean flags, stores the original flag format (e.g., "-f", "--verbose")
 	OriginalName string // For templates, stores the original name with spacing (e.g., "page " from "{{page # desc}}")
 }
@@ -39,7 +38,6 @@ func (t FieldToken) String() string {
 // Blueprint represents a parsed command template
 type Blueprint struct {
 	BaseCommand string
-	InputSchema *jsonschema.Schema
 	ShellWords  [][]Token // Tokenized shell words
 }
 
@@ -95,9 +93,9 @@ func (bp *Blueprint) renderFieldTokenForDisplay(token FieldToken) string {
 		return "{{" + name + "}}"
 	}
 
-	// For optional fields, check if it's an array by looking at the schema
+	// For optional fields, check if it's an array
 	normalizedName := strings.ReplaceAll(token.Name, "-", "_")
-	if schema, exists := bp.InputSchema.Properties[normalizedName]; exists && schema.Type == "array" {
+	if token.IsArray {
 		return "[" + normalizedName + "...]"
 	}
 
@@ -107,5 +105,5 @@ func (bp *Blueprint) renderFieldTokenForDisplay(token FieldToken) string {
 
 // GetInputSchema returns the input schema
 func (bp *Blueprint) GetInputSchema() interface{} {
-	return bp.InputSchema
+	return bp.GenerateInputSchema()
 }

@@ -3,8 +3,6 @@ package blueprint
 import (
 	"fmt"
 	"strings"
-
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 )
 
 // FromArgs creates a new Blueprint from command arguments using tokenization
@@ -20,56 +18,20 @@ func FromArgs(args []string) (*Blueprint, error) {
 	bp := &Blueprint{
 		BaseCommand: args[0],
 		ShellWords:  make([][]Token, len(args)),
-		InputSchema: &jsonschema.Schema{
-			Type:       "object",
-			Properties: make(map[string]*jsonschema.Schema),
-		},
 	}
 
 	// Tokenize each shell word
-	properties := make(map[string]*jsonschema.Schema)
-	required := []string{}
-
 	for i, arg := range args {
-		tokens, argProperties, argRequired, _ := tokenizeShellWord(arg)
+		tokens := tokenizeShellWord(arg)
 		bp.ShellWords[i] = tokens
-
-		// Merge properties
-		for k, v := range argProperties {
-			if existingProp, exists := properties[k]; exists {
-				if v.Description != "" && existingProp.Description == "" {
-					properties[k] = v
-				}
-			} else {
-				properties[k] = v
-			}
-		}
-
-		// Merge required fields
-		for _, req := range argRequired {
-			if !contains(required, req) {
-				required = append(required, req)
-			}
-		}
-	}
-
-	// Update InputSchema
-	if len(properties) > 0 {
-		bp.InputSchema.Properties = properties
-	}
-	if len(required) > 0 {
-		bp.InputSchema.Required = required
 	}
 
 	return bp, nil
 }
 
 // tokenizeShellWord tokenizes a single shell word into tokens
-func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []string, string) {
+func tokenizeShellWord(word string) []Token {
 	tokens := []Token{}
-	properties := make(map[string]*jsonschema.Schema)
-	required := []string{}
-	descriptionPart := word
 
 	// Check for boolean flag patterns first
 	if matches := booleanFlagRegex.FindStringSubmatch(word); matches != nil {
@@ -81,9 +43,6 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 
 		// Keep original flag name for the token
 		flagName := strings.TrimLeft(flag, "-")
-
-		// Use normalized name for schema properties (dashes to underscores)
-		propName := strings.ReplaceAll(flagName, "-", "_")
 
 		if description == "" {
 			description = fmt.Sprintf("Enable %s flag", flag)
@@ -97,13 +56,7 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 		}
 		tokens = append(tokens, token)
 
-		properties[propName] = &jsonschema.Schema{
-			Type:        "boolean",
-			Description: description,
-		}
-
-		descriptionPart = "[" + flag + "]"
-		return tokens, properties, required, descriptionPart
+		return tokens
 	}
 
 	// Check for optional patterns (they match the entire word)
@@ -120,33 +73,11 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 			Name:        varName,
 			Description: description,
 			Required:    false,
+			IsArray:     isArray,
 		}
 		tokens = append(tokens, token)
 
-		// Use normalized name for schema properties (dashes to underscores)
-		normalizedName := strings.ReplaceAll(varName, "-", "_")
-
-		if isArray {
-			if description == "" {
-				description = "Additional command line arguments"
-			}
-			properties[normalizedName] = &jsonschema.Schema{
-				Type:        "array",
-				Items:       &jsonschema.Schema{Type: "string"},
-				Description: description,
-			}
-			required = append(required, normalizedName)
-			descriptionPart = "[" + varName + "...]"
-		} else {
-			prop := &jsonschema.Schema{Type: "string"}
-			if description != "" {
-				prop.Description = description
-			}
-			properties[normalizedName] = prop
-			descriptionPart = "[" + normalizedName + "]"
-		}
-
-		return tokens, properties, required, descriptionPart
+		return tokens
 	}
 
 	// Parse template patterns within the word
@@ -187,17 +118,6 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 			}
 			tokens = append(tokens, token)
 
-			// Use normalized name for schema properties (dashes to underscores)
-			normalizedName := strings.ReplaceAll(varName, "-", "_")
-
-			// Update properties
-			prop := &jsonschema.Schema{Type: "string"}
-			if description != "" {
-				prop.Description = description
-			}
-			properties[normalizedName] = prop
-			required = append(required, normalizedName)
-
 			currentPos = end
 		}
 
@@ -208,13 +128,10 @@ func tokenizeShellWord(word string) ([]Token, map[string]*jsonschema.Schema, []s
 				tokens = append(tokens, TextToken{Value: textAfter})
 			}
 		}
-
-		// Update description part to show template syntax
-		descriptionPart = templateRegex.ReplaceAllString(word, "{{$1}}")
 	} else {
 		// If no templates were found, treat the entire word as text
 		tokens = append(tokens, TextToken{Value: word})
 	}
 
-	return tokens, properties, required, descriptionPart
+	return tokens
 }
