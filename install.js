@@ -4,8 +4,16 @@ const os = require("os");
 const path = require("path");
 
 const platform = os.platform();
+const binDir = path.join(__dirname, "bin");
 
-// Map platform names to binary names
+// Check if we already have a local binary (from local build)
+const localBinPath = path.join(binDir, platform === "win32" ? "studio-mcp.exe" : "studio-mcp");
+if (fs.existsSync(localBinPath)) {
+  console.log("✅ Local binary already available:", localBinPath);
+  return;
+}
+
+// Map platform names to binary names for downloads
 const binName = platform === "darwin"
   ? "studio-mcp-macos"
   : platform === "linux"
@@ -13,7 +21,6 @@ const binName = platform === "darwin"
   : "studio-mcp-win.exe";
 
 const url = `https://github.com/martinemde/studio-mcp/releases/latest/download/${binName}`;
-const binDir = path.join(__dirname, "bin");
 const outPath = path.join(binDir, binName);
 
 console.log(`Downloading ${binName} from GitHub releases...`);
