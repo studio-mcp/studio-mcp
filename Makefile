@@ -33,8 +33,6 @@ ifndef VERSION
 	$(error VERSION is required. Usage: make bump-version VERSION=1.2.3)
 endif
 	./scripts/sync-version.sh $(VERSION)
-	git add package.json
-	git commit -m "Bump version to $(VERSION)" || true
 
 release: ## Create a release (usage: make release VERSION=1.2.3)
 ifndef VERSION

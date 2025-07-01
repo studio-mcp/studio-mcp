@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const path = require("path");
 const { spawnSync } = require("child_process");
 const fs = require("fs");
@@ -14,9 +15,15 @@ const platformMap = {
   'win32': 'win'
 };
 
+// For local development, use the simple binary name
+// For distributed packages, use platform-specific names
+const localBinPath = path.join(binDir, platform === "win32" ? "studio-mcp.exe" : "studio-mcp");
 const normalizedPlatform = platformMap[platform] || platform;
-const binName = platform === "win32" ? `studio-mcp-${normalizedPlatform}.exe` : `studio-mcp-${normalizedPlatform}`;
-const binPath = path.join(binDir, binName);
+const distributedBinName = platform === "win32" ? `studio-mcp-win.exe` : `studio-mcp-${normalizedPlatform}`;
+const distributedBinPath = path.join(binDir, distributedBinName);
+
+// Use local binary if it exists, otherwise use distributed binary path
+const binPath = fs.existsSync(localBinPath) ? localBinPath : distributedBinPath;
 
 // Check if binary exists, if not try to download it
 if (!fs.existsSync(binPath)) {
