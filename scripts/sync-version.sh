@@ -53,6 +53,8 @@ echo "Updated package.json version to: $VERSION"
 
 # If we're creating a new version, create/update the git tag
 if [ -n "$1" ]; then
+    git add package.json
+    git commit -m "Bump version to $VERSION"
     echo "Creating git tag: $TAG"
     git tag -a "$TAG" -m "Release $TAG" || echo "Tag $TAG already exists"
 fi
