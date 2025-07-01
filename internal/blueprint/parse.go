@@ -33,105 +33,132 @@ func FromArgs(args []string) (*Blueprint, error) {
 func tokenizeShellWord(word string) []Token {
 	tokens := []Token{}
 
-	// Check for boolean flag patterns first
-	if matches := booleanFlagRegex.FindStringSubmatch(word); matches != nil {
-		flag := matches[1]
-		description := ""
-		if len(matches) > 2 && matches[2] != "" {
-			description = strings.TrimSpace(matches[2])
-		}
+	// Check if entire word is a single field (starts with {{ or [)
+	if (strings.HasPrefix(word, "{{") && strings.HasSuffix(word, "}}")) ||
+		(strings.HasPrefix(word, "[") && strings.HasSuffix(word, "]")) {
 
-		// Keep original flag name for the token
-		flagName := strings.TrimLeft(flag, "-")
-
-		if description == "" {
-			description = fmt.Sprintf("Enable %s flag", flag)
-		}
-
-		token := FieldToken{
-			Name:         flagName, // Store original name
-			Description:  description,
-			Required:     false,
-			OriginalFlag: flag, // Store original flag format
-		}
-		tokens = append(tokens, token)
-
-		return tokens
-	}
-
-	// Check for optional patterns (they match the entire word)
-	if matches := optionalRegex.FindStringSubmatch(word); matches != nil {
-		varName := matches[1] // Keep original name without dash conversion
-		description := ""
-		if len(matches) > 2 && matches[2] != "" {
-			description = strings.TrimSpace(matches[2])
-		}
-
-		isArray := strings.Contains(word, "...")
-
-		token := FieldToken{
-			Name:        varName,
-			Description: description,
-			Required:    false,
-			IsArray:     isArray,
-		}
-		tokens = append(tokens, token)
-
-		return tokens
-	}
-
-	// Parse template patterns within the word
-	currentPos := 0
-	matches := templateRegex.FindAllStringSubmatchIndex(word, -1)
-
-	if len(matches) > 0 {
-		for _, match := range matches {
-			start, end := match[0], match[1]
-			nameStart, nameEnd := match[2], match[3]
-			var descStart, descEnd int
-			if len(match) > 4 {
-				descStart, descEnd = match[4], match[5]
-			}
-
-			// Add text before the template
-			if start > currentPos {
-				textBefore := word[currentPos:start]
-				if textBefore != "" {
-					tokens = append(tokens, TextToken{Value: textBefore})
-				}
-			}
-
-			// Extract variable name and description
-			varName := strings.TrimSpace(word[nameStart:nameEnd])
-			originalName := word[nameStart:nameEnd] // Keep original spacing
-			description := ""
-			if descStart > 0 && descEnd > descStart {
-				description = strings.TrimSpace(word[descStart:descEnd])
-			}
-
-			// Add field token with original name
-			token := FieldToken{
-				Name:         varName,      // Keep trimmed name for processing
-				OriginalName: originalName, // Keep original name with spacing for display
-				Description:  description,
-				Required:     true,
-			}
+		token := parseField(word)
+		if token != nil {
 			tokens = append(tokens, token)
-
-			currentPos = end
+			return tokens
 		}
+		// If parsing failed, treat as literal text
+		tokens = append(tokens, TextToken{Value: word})
+		return tokens
+	}
 
-		// Add remaining text after the last template
-		if currentPos < len(word) {
-			textAfter := word[currentPos:]
-			if textAfter != "" {
-				tokens = append(tokens, TextToken{Value: textAfter})
+	// Parse mixed content with templates
+	currentPos := 0
+	for currentPos < len(word) {
+		// Look for next template start
+		templateStart := strings.Index(word[currentPos:], "{{")
+		if templateStart == -1 {
+			// No more templates, add remaining text
+			if currentPos < len(word) {
+				tokens = append(tokens, TextToken{Value: word[currentPos:]})
 			}
+			break
 		}
-	} else {
-		// If no templates were found, treat the entire word as text
+
+		templateStart += currentPos
+
+		// Add text before template
+		if templateStart > currentPos {
+			tokens = append(tokens, TextToken{Value: word[currentPos:templateStart]})
+		}
+
+		// Find template end
+		templateEnd := strings.Index(word[templateStart:], "}}")
+		if templateEnd == -1 {
+			// Malformed template, treat rest as text
+			tokens = append(tokens, TextToken{Value: word[templateStart:]})
+			break
+		}
+
+		templateEnd += templateStart + 2
+
+		// Parse the template
+		templateText := word[templateStart:templateEnd]
+		token := parseField(templateText)
+		if token != nil {
+			tokens = append(tokens, token)
+		} else {
+			// If parsing failed, treat as literal text
+			tokens = append(tokens, TextToken{Value: templateText})
+		}
+
+		currentPos = templateEnd
+	}
+
+	// If no tokens were created, treat entire word as text
+	if len(tokens) == 0 {
 		tokens = append(tokens, TextToken{Value: word})
 	}
 
 	return tokens
+}
+
+// parseField parses a field enclosed in {{ }} or [ ]
+func parseField(field string) Token {
+	var content string
+	var required bool
+
+	// Determine field type and extract content
+	if strings.HasPrefix(field, "{{") && strings.HasSuffix(field, "}}") {
+		content = field[2 : len(field)-2] // Remove {{ }}
+		required = true
+	} else if strings.HasPrefix(field, "[") && strings.HasSuffix(field, "]") {
+		content = field[1 : len(field)-1] // Remove [ ]
+		required = false
+	} else {
+		return nil // Not a valid field
+	}
+
+	// Parse content for name, description, and modifiers
+	var name, description string
+	isArray := false
+	var originalFlag string
+
+	// Check for description (split on #)
+	parts := strings.SplitN(content, "#", 2)
+	name = strings.TrimSpace(parts[0])
+	if len(parts) > 1 {
+		description = strings.TrimSpace(parts[1])
+	}
+
+	// If name is empty, this is not a valid field (e.g., {{}})
+	if name == "" {
+		return nil
+	}
+
+	// Check for array notation (...)
+	if strings.HasSuffix(name, "...") {
+		isArray = true
+		name = strings.TrimSuffix(name, "...")
+		name = strings.TrimSpace(name)
+	}
+
+	// Check for boolean flag (starts with - or --)
+	if !required && (strings.HasPrefix(name, "-") || strings.HasPrefix(name, "--")) {
+		originalFlag = name
+		name = strings.TrimLeft(name, "-")
+		if description == "" {
+			description = fmt.Sprintf("Enable %s flag", originalFlag)
+		}
+	}
+
+	// Store original name for templates (preserves spacing)
+	originalName := ""
+	if required {
+		originalName = parts[0] // Keep original spacing for display
+	}
+
+	return FieldToken{
+		Name:         name,
+		Description:  description,
+		Required:     required,
+		IsArray:      isArray,
+		OriginalFlag: originalFlag,
+		OriginalName: originalName,
+	}
 }

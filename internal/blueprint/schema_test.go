@@ -20,6 +20,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 			expectedSchema: &jsonschema.Schema{
 				Type:       "object",
 				Properties: map[string]*jsonschema.Schema{},
+				Required:   []string{},
 			},
 		},
 		{
@@ -34,7 +35,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Additional command line arguments",
 					},
 				},
-				Required: [],
+				Required: []string{},
 			},
 		},
 		{
@@ -121,7 +122,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Additional command line arguments",
 					},
 				},
-				Required: []string{"files"},
+				Required: []string{},
 			},
 		},
 		{
@@ -136,7 +137,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Files to list",
 					},
 				},
-				Required: []string{"files"},
+				Required: []string{},
 			},
 		},
 		{
@@ -149,6 +150,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Type: "string",
 					},
 				},
+				Required: []string{},
 			},
 		},
 		{
@@ -162,6 +164,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Person's name",
 					},
 				},
+				Required: []string{},
 			},
 		},
 		{
@@ -174,6 +177,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Type: "string",
 					},
 				},
+				Required: []string{},
 			},
 		},
 		{
@@ -187,6 +191,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Enable -f flag",
 					},
 				},
+				Required: []string{},
 			},
 		},
 		{
@@ -200,6 +205,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Enable --force flag",
 					},
 				},
+				Required: []string{},
 			},
 		},
 		{
@@ -213,6 +219,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "force removal",
 					},
 				},
+				Required: []string{},
 			},
 		},
 		{
@@ -251,7 +258,7 @@ func TestBlueprint_GenerateInputSchema(t *testing.T) {
 						Description: "Additional command line arguments",
 					},
 				},
-				Required: []string{"flag", "files"},
+				Required: []string{"flag"},
 			},
 		},
 	}

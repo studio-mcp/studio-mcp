@@ -56,8 +56,8 @@ func (bp *Blueprint) GenerateInputSchema() *jsonschema.Schema {
 						Items:       &jsonschema.Schema{Type: "string"},
 						Description: description,
 					}
-					// Array fields are always required when present
-					if !contains(required, normalizedName) {
+					// Array fields follow the same required logic as other fields
+					if fieldToken.Required && !contains(required, normalizedName) {
 						required = append(required, normalizedName)
 					}
 				} else {
@@ -81,10 +81,7 @@ func (bp *Blueprint) GenerateInputSchema() *jsonschema.Schema {
 	schema := &jsonschema.Schema{
 		Type:       "object",
 		Properties: properties,
-	}
-
-	if len(required) > 0 {
-		schema.Required = required
+		Required:   required, // Always set, even if empty
 	}
 
 	return schema
