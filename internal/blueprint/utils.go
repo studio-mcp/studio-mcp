@@ -1,18 +1,5 @@
 package blueprint
 
-import (
-	"regexp"
-)
-
-var (
-	// Matches {{variable}} or {{variable#description}}
-	templateRegex = regexp.MustCompile(`\{\{([^#}]+)(?:#([^}]+))?\}\}`)
-	// Matches [variable] or [variable#description] or [variable...] or [variable...#description]
-	optionalRegex = regexp.MustCompile(`^\[([^#.\]]+)(?:\.\.\.)?(?:#([^.\]]+))?(\.\.\.)?\]$`)
-	// Matches boolean flags like [-f] or [--flag] or [-f#description] or [--flag#description]
-	booleanFlagRegex = regexp.MustCompile(`^\[(-{1,2}[a-zA-Z][a-zA-Z0-9-]*)(?:#([^\]]+))?\]$`)
-)
-
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
