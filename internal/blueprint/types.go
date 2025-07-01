@@ -25,7 +25,6 @@ type FieldToken struct {
 	Required     bool
 	IsArray      bool   // Indicates if this field represents an array (has ...)
 	OriginalFlag string // For boolean flags, stores the original flag format (e.g., "-f", "--verbose")
-	OriginalName string // For templates, stores the original name with spacing (e.g., "page " from "{{page # desc}}")
 }
 
 func (t FieldToken) String() string {
@@ -78,29 +77,24 @@ func (bp *Blueprint) renderTokensForDisplay(tokens []Token) string {
 
 // renderFieldTokenForDisplay renders a single field token for display
 func (bp *Blueprint) renderFieldTokenForDisplay(token FieldToken) string {
+	name := token.Name
+
 	// For boolean flags, use the original flag format
 	if token.OriginalFlag != "" {
-		return "[" + token.OriginalFlag + "]"
+		name = token.OriginalFlag
+	}
+
+	if token.IsArray {
+		name = name + "..."
 	}
 
 	// For required fields, use template format
 	if token.Required {
-		// Use OriginalName if available (preserves spacing), otherwise use Name
-		name := token.Name
-		if token.OriginalName != "" {
-			name = token.OriginalName
-		}
 		return "{{" + name + "}}"
 	}
 
-	// For optional fields, check if it's an array
-	normalizedName := strings.ReplaceAll(token.Name, "-", "_")
-	if token.IsArray {
-		return "[" + normalizedName + "...]"
-	}
-
 	// Regular optional field
-	return "[" + normalizedName + "]"
+	return "[" + name + "]"
 }
 
 // GetInputSchema returns the input schema

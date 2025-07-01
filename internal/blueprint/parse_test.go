@@ -7,331 +7,206 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBlueprint_ParseSimpleCommand(t *testing.T) {
-	t.Run("parses simple command without args", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git", "status"})
-		require.NoError(t, err)
+func TestBlueprint_BaseCommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+		wantErr  bool
+		errMsg   string
+	}{
+		{
+			name:     "simple command name",
+			args:     []string{"git", "status"},
+			expected: "git",
+		},
+		{
+			name:     "command name with dashes",
+			args:     []string{"git-status"},
+			expected: "git-status",
+		},
+		{
+			name:     "command name with underscores",
+			args:     []string{"do_thing", "[paths...]"},
+			expected: "do_thing",
+		},
+		{
+			name:    "empty args",
+			args:    []string{},
+			wantErr: true,
+			errMsg:  "no command provided",
+		},
+		{
+			name:    "empty command",
+			args:    []string{""},
+			wantErr: true,
+			errMsg:  "empty command provided",
+		},
+		{
+			name:    "whitespace-only command",
+			args:    []string{"   "},
+			wantErr: true,
+			errMsg:  "empty command provided",
+		},
+	}
 
-		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git status", bp.GetCommandFormat())
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bp, err := FromArgs(tt.args)
 
-	t.Run("parses simple command with explicit args", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git", "status", "[args...]"})
-		require.NoError(t, err)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+				return
+			}
 
-		assert.Equal(t, "git", bp.BaseCommand)
-	})
-}
-
-func TestBlueprint_ParseBlueprintedCommand(t *testing.T) {
-	t.Run("parses blueprinted command with description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"curl", "https://en.m.wikipedia.org/wiki/{{page#A valid wikipedia page}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "curl", bp.BaseCommand)
-		assert.Equal(t, "curl https://en.m.wikipedia.org/wiki/{{page}}", bp.GetCommandFormat())
-	})
-
-	t.Run("parses blueprinted command without description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "{{text}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-	})
-
-	t.Run("parses blueprinted command with spaces in description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"curl", "https://en.m.wikipedia.org/wiki/{{page # A valid wikipedia page}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "curl", bp.BaseCommand)
-	})
-
-	t.Run("parses mixed blueprints with required and optional arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"command", "{{arg1#Custom description}}", "[arg2]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command {{arg1}} [arg2]", bp.GetCommandFormat())
-	})
-
-	t.Run("prioritizes explicit description over default", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "{{text#Explicit description}}", "{{text}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo {{text}} {{text}}", bp.GetCommandFormat())
-	})
-
-	t.Run("parses array arguments with description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[files...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo [files...]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses array arguments without description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"ls", "[paths...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls [paths...]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses optional string field without ellipsis", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[optional]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo [optional]", bp.GetCommandFormat())
-	})
-
-	t.Run("converts dashes to underscores in argument names", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[has-dashes]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo [has_dashes]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses mixed string and array arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"command", "{{flag#Command flag}}", "[files...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command {{flag}} [files...]", bp.GetCommandFormat())
-	})
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, bp.BaseCommand)
+		})
+	}
 }
 
 func TestBlueprint_GetCommandFormat(t *testing.T) {
-	t.Run("generates description for simple command without args", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git"})
-		require.NoError(t, err)
-		assert.Equal(t, "git", bp.GetCommandFormat())
-	})
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{
+			name:     "command without args",
+			args:     []string{"git"},
+			expected: "git",
+		},
+		{
+			name:     "command with literal args",
+			args:     []string{"git", "status"},
+			expected: "git status",
+		},
+		{
+			name:     "command with array args",
+			args:     []string{"git", "[args...]"},
+			expected: "git [args...]",
+		},
+		{
+			name:     "command with array args",
+			args:     []string{"echo", "{{args...}}"},
+			expected: "echo {{args...}}",
+		},
+		{
+			name:     "command with literal and array args",
+			args:     []string{"git", "status", "[args...]"},
+			expected: "git status [args...]",
+		},
+		{
+			name:     "command with array with description",
+			args:     []string{"git", "[args... #Additional command line arguments]"},
+			expected: "git [args...]",
+		},
+		{
+			name:     "command with required field",
+			args:     []string{"echo", "{{text}}"},
+			expected: "echo {{text}}",
+		},
+		{
+			name:     "command with required field with description",
+			args:     []string{"echo", "{{text#A required field}}"},
+			expected: "echo {{text}}",
+		},
+		{
+			name:     "command with optional field",
+			args:     []string{"echo", "[text]"},
+			expected: "echo [text]",
+		},
+		{
+			name:     "command with optional field with description",
+			args:     []string{"echo", "[text#description]"},
+			expected: "echo [text]",
+		},
+		{
+			name:     "command with suffix literal",
+			args:     []string{"echo", "[text]suffix"},
+			expected: "echo [text]suffix",
+		},
+		{
+			name:     "command with prefix literal",
+			args:     []string{"echo", "prefix[text]"},
+			expected: "echo prefix[text]",
+		},
+		{
+			name:     "command with prefix and suffix literal",
+			args:     []string{"echo", "prefix[text]suffix"},
+			expected: "echo prefix[text]suffix",
+		},
+		{
+			name:     "command with embedded template",
+			args:     []string{"curl", "https://en.m.wikipedia.org/wiki/{{page#A valid wikipedia page}}"},
+			expected: "curl https://en.m.wikipedia.org/wiki/{{page}}",
+		},
+		{
+			name:     "command with spaces in field description",
+			args:     []string{"curl", "https://en.m.wikipedia.org/wiki/{{page # A valid wikipedia page}}"},
+			expected: "curl https://en.m.wikipedia.org/wiki/{{page}}",
+		},
+		{
+			name:     "mixed blueprints with required and optional arguments",
+			args:     []string{"command", "{{arg1#Custom description}}", "[arg2]"},
+			expected: "command {{arg1}} [arg2]",
+		},
+		{
+			name:     "prioritizes explicit description over default",
+			args:     []string{"echo", "{{text#Explicit description}}", "{{text}}"},
+			expected: "echo {{text}} {{text}}",
+		},
+		{
+			name:     "preserves underscores in field names for display",
+			args:     []string{"echo", "[has_underscores]"},
+			expected: "echo [has_underscores]",
+		},
+		{
+			name:     "preserves dashes in field names for display",
+			args:     []string{"echo", "[has-dashes]"},
+			expected: "echo [has-dashes]",
+		},
+		{
+			name:     "short boolean flag without description",
+			args:     []string{"ls", "[-f]"},
+			expected: "ls [-f]",
+		},
+		{
+			name:     "long boolean flag without description",
+			args:     []string{"ls", "[--force]"},
+			expected: "ls [--force]",
+		},
+		{
+			name:     "boolean flag with description",
+			args:     []string{"rm", "[-f#force removal]"},
+			expected: "rm [-f]",
+		},
+		{
+			name:     "long boolean flag with description",
+			args:     []string{"ls", "[--force#force removal]"},
+			expected: "ls [--force]",
+		},
+		{
+			name:     "required flag with description",
+			args:     []string{"cp", "{{-r#recursive}}"},
+			expected: "cp {{-r}}",
+		},
+	}
 
-	t.Run("generates description for simple command with explicit args", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git", "[args...]"})
-		require.NoError(t, err)
-		assert.Equal(t, "git [args...]", bp.GetCommandFormat())
-	})
-
-	t.Run("generates description for blueprinted command", func(t *testing.T) {
-		bp, err := FromArgs([]string{"rails", "generate", "{{generator#A rails generator}}"})
-		require.NoError(t, err)
-		assert.Equal(t, "rails generate {{generator}}", bp.GetCommandFormat())
-	})
-}
-
-func TestBlueprint_EnhancedOptionalParsing(t *testing.T) {
-	t.Run("parses optional argument with custom description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[name#Person's name]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-	})
-
-	t.Run("parses array argument with custom description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"ls", "[files...#Files to list]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "ls", bp.BaseCommand)
-	})
-
-	t.Run("parses mixed optional arguments with and without descriptions", func(t *testing.T) {
-		bp, err := FromArgs([]string{"cmd", "[required]", "[optional#Custom desc]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "cmd", bp.BaseCommand)
-	})
-}
-
-func TestBlueprint_ParseBooleanFlags(t *testing.T) {
-	t.Run("parses short boolean flag without description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"ls", "[-f]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls [-f]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses long boolean flag without description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"ls", "[--force]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls [--force]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses boolean flag with description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"rm", "[-f#force removal]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "rm", bp.BaseCommand)
-		assert.Equal(t, "rm [-f]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses mixed boolean flags and other arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"cp", "[-r#recursive]", "{{source}}", "{{dest}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "cp", bp.BaseCommand)
-		assert.Equal(t, "cp [-r] {{source}} {{dest}}", bp.GetCommandFormat())
-	})
-}
-
-func TestBlueprint_FromArgs(t *testing.T) {
-	t.Run("parses simple command", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git", "status"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git status", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with array arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git", "status", "[args...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git status [args...]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with template argument", func(t *testing.T) {
-		bp, err := FromArgs([]string{"curl", "https://en.m.wikipedia.org/wiki/{{page#A valid wikipedia page}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "curl", bp.BaseCommand)
-		assert.Equal(t, "curl https://en.m.wikipedia.org/wiki/{{page}}", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with template argument without description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "{{text}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo {{text}}", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with template argument with space before description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"curl", "https://en.m.wikipedia.org/wiki/{{page # A valid wikipedia page}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "curl", bp.BaseCommand)
-		assert.Equal(t, "curl https://en.m.wikipedia.org/wiki/{{page }}", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with mixed template and optional arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"command", "{{arg1#Custom description}}", "[arg2]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command {{arg1}} [arg2]", bp.GetCommandFormat())
-	})
-
-	t.Run("handles duplicate template variables with descriptions", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "{{text#Explicit description}}", "{{text}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-	})
-
-	t.Run("parses command with array arguments and description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[files...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo [files...]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with array arguments and custom description", func(t *testing.T) {
-		bp, err := FromArgs([]string{"ls", "[paths...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "ls", bp.BaseCommand)
-		assert.Equal(t, "ls [paths...]", bp.GetCommandFormat())
-	})
-
-	t.Run("parses command with optional string argument", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[optional]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-		assert.Equal(t, "echo [optional]", bp.GetCommandFormat())
-	})
-
-	t.Run("handles dashes in optional argument names", func(t *testing.T) {
-		bp, err := FromArgs([]string{"echo", "[has-dashes]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
-	})
-
-	t.Run("parses command with mixed required and array arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"command", "{{flag#Command flag}}", "[files...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "command", bp.BaseCommand)
-		assert.Equal(t, "command {{flag}} [files...]", bp.GetCommandFormat())
-	})
-
-	t.Run("creates tool name from command with dashes", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git-flow"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "git-flow", bp.BaseCommand)
-	})
-
-	t.Run("handles command with no additional arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "git", bp.BaseCommand)
-		assert.Equal(t, "git", bp.GetCommandFormat())
-	})
-
-	t.Run("handles command with optional array arguments", func(t *testing.T) {
-		bp, err := FromArgs([]string{"git", "[args...]"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "git", bp.BaseCommand)
-	})
-
-	t.Run("handles command with template generator", func(t *testing.T) {
-		bp, err := FromArgs([]string{"rails", "generate", "{{generator#A rails generator}}"})
-		require.NoError(t, err)
-
-		assert.Equal(t, "rails", bp.BaseCommand)
-	})
-}
-
-func TestBlueprint_FromArgsErrors(t *testing.T) {
-	t.Run("returns error for empty args", func(t *testing.T) {
-		_, err := FromArgs([]string{})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no command provided")
-	})
-
-	t.Run("returns error for empty command", func(t *testing.T) {
-		_, err := FromArgs([]string{""})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "empty command provided")
-	})
-
-	t.Run("returns error for whitespace-only command", func(t *testing.T) {
-		_, err := FromArgs([]string{"   "})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "empty command provided")
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bp, err := FromArgs(tt.args)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, bp.GetCommandFormat())
+		})
+	}
 }
 
 func TestBlueprint_FromArgsTokenization(t *testing.T) {
 	t.Run("tokenizes simple command without templates", func(t *testing.T) {
 		bp, err := FromArgs([]string{"echo", "hello"})
 		require.NoError(t, err)
-
-		assert.Equal(t, "echo", bp.BaseCommand)
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
@@ -346,7 +221,7 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "text", Description: "", Required: true, OriginalFlag: "", OriginalName: "text"}},
+			{FieldToken{Name: "text", Description: "", Required: true, OriginalFlag: ""}},
 		}
 		assert.Equal(t, expected, bp.ShellWords)
 	})
@@ -357,7 +232,7 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 
 		expected := [][]Token{
 			{TextToken{Value: "echo"}},
-			{FieldToken{Name: "text", Description: "message to echo", Required: true, OriginalFlag: "", OriginalName: "text"}},
+			{FieldToken{Name: "text", Description: "message to echo", Required: true, OriginalFlag: ""}},
 		}
 		assert.Equal(t, expected, bp.ShellWords)
 	})
@@ -370,7 +245,7 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 			{TextToken{Value: "echo"}},
 			{
 				TextToken{Value: "prefix"},
-				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: "", OriginalName: "text"},
+				FieldToken{Name: "text", Description: "desc", Required: true, OriginalFlag: ""},
 				TextToken{Value: "suffix"},
 			},
 		}
@@ -407,9 +282,9 @@ func TestBlueprint_FromArgsTokenization(t *testing.T) {
 			{TextToken{Value: "curl"}},
 			{
 				TextToken{Value: "https://api.com/"},
-				FieldToken{Name: "endpoint", Description: "API endpoint", Required: true, OriginalFlag: "", OriginalName: "endpoint"},
+				FieldToken{Name: "endpoint", Description: "API endpoint", Required: true, OriginalFlag: ""},
 			},
-			{FieldToken{Name: "verbose", Description: "Enable --verbose flag", Required: false, OriginalFlag: "--verbose", OriginalName: ""}},
+			{FieldToken{Name: "verbose", Description: "Enable --verbose flag", Required: false, OriginalFlag: "--verbose"}},
 		}
 		assert.Equal(t, expected, bp.ShellWords)
 	})

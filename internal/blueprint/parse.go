@@ -122,13 +122,14 @@ func parseField(field string) Token {
 	// Check for description (split on #)
 	parts := strings.SplitN(content, "#", 2)
 	name = strings.TrimSpace(parts[0])
-	if len(parts) > 1 {
-		description = strings.TrimSpace(parts[1])
-	}
 
 	// If name is empty, this is not a valid field (e.g., {{}})
 	if name == "" {
 		return nil
+	}
+
+	if len(parts) > 1 {
+		description = strings.TrimSpace(parts[1])
 	}
 
 	// Check for array notation (...)
@@ -147,18 +148,11 @@ func parseField(field string) Token {
 		}
 	}
 
-	// Store original name for templates (preserves spacing)
-	originalName := ""
-	if required {
-		originalName = parts[0] // Keep original spacing for display
-	}
-
 	return FieldToken{
 		Name:         name,
 		Description:  description,
 		Required:     required,
 		IsArray:      isArray,
 		OriginalFlag: originalFlag,
-		OriginalName: originalName,
 	}
 }
