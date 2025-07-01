@@ -31,96 +31,98 @@ func FromArgs(args []string) (*Blueprint, error) {
 
 // tokenizeShellWord tokenizes a single shell word into tokens
 func tokenizeShellWord(word string) []Token {
+	// Parse mixed content
 	tokens := []Token{}
+	pos := 0
 
-	// Check if entire word is a single field (starts with {{ or [)
-	if (strings.HasPrefix(word, "{{") && strings.HasSuffix(word, "}}")) ||
-		(strings.HasPrefix(word, "[") && strings.HasSuffix(word, "]")) {
-
-		token := parseField(word)
-		if token != nil {
-			tokens = append(tokens, token)
-			return tokens
-		}
-		// If parsing failed, treat as literal text
-		tokens = append(tokens, TextToken{Value: word})
-		return tokens
-	}
-
-	// Parse mixed content with templates
-	currentPos := 0
-	for currentPos < len(word) {
-		// Look for next template start (either {{ or [)
-		nextTemplateStart := -1
-		templateType := ""
-
-		// Find the closest template start
-		requiredStart := strings.Index(word[currentPos:], "{{")
-		optionalStart := strings.Index(word[currentPos:], "[")
-
-		if requiredStart != -1 && (optionalStart == -1 || requiredStart < optionalStart) {
-			nextTemplateStart = requiredStart + currentPos
-			templateType = "required"
-		} else if optionalStart != -1 {
-			nextTemplateStart = optionalStart + currentPos
-			templateType = "optional"
-		}
-
-		if nextTemplateStart == -1 {
+	for pos < len(word) {
+		templateStart := findNextTemplate(word, pos)
+		if templateStart == nil {
 			// No more templates, add remaining text
-			if currentPos < len(word) {
-				tokens = append(tokens, TextToken{Value: word[currentPos:]})
+			if pos < len(word) {
+				tokens = append(tokens, TextToken{Value: word[pos:]})
 			}
 			break
 		}
 
 		// Add text before template
-		if nextTemplateStart > currentPos {
-			tokens = append(tokens, TextToken{Value: word[currentPos:nextTemplateStart]})
+		if templateStart.Start > pos {
+			tokens = append(tokens, TextToken{Value: word[pos:templateStart.Start]})
 		}
 
-		// Find template end based on type
-		var templateEnd int
-		var templateText string
-
-		if templateType == "required" {
-			endIndex := strings.Index(word[nextTemplateStart:], "}}")
-			if endIndex == -1 {
-				// Malformed template, treat rest as text
-				tokens = append(tokens, TextToken{Value: word[nextTemplateStart:]})
-				break
-			}
-			templateEnd = nextTemplateStart + endIndex + 2
-			templateText = word[nextTemplateStart:templateEnd]
-		} else { // optional
-			endIndex := strings.Index(word[nextTemplateStart:], "]")
-			if endIndex == -1 {
-				// Malformed template, treat rest as text
-				tokens = append(tokens, TextToken{Value: word[nextTemplateStart:]})
-				break
-			}
-			templateEnd = nextTemplateStart + endIndex + 1
-			templateText = word[nextTemplateStart:templateEnd]
-		}
-
-		// Parse the template
-		token := parseField(templateText)
-		if token != nil {
+		// Parse template
+		templateText := word[templateStart.Start:templateStart.End]
+		if token := parseField(templateText); token != nil {
 			tokens = append(tokens, token)
 		} else {
-			// If parsing failed, treat as literal text
 			tokens = append(tokens, TextToken{Value: templateText})
 		}
 
-		currentPos = templateEnd
+		pos = templateStart.End
 	}
 
-	// If no tokens were created, treat entire word as text
+	// Ensure we always return at least one token
 	if len(tokens) == 0 {
 		tokens = append(tokens, TextToken{Value: word})
 	}
 
 	return tokens
+}
+
+// templateMatch represents a found template in the text
+type templateMatch struct {
+	Start int
+	End   int
+	Type  string
+}
+
+// findNextTemplate finds the next template starting from the given position
+func findNextTemplate(word string, startPos int) *templateMatch {
+	remaining := word[startPos:]
+
+	requiredStart := strings.Index(remaining, "{{")
+	optionalStart := strings.Index(remaining, "[")
+
+	// Find the closest template start
+	var nextStart int
+	var templateType string
+
+	if requiredStart != -1 && (optionalStart == -1 || requiredStart < optionalStart) {
+		nextStart = requiredStart
+		templateType = "required"
+	} else if optionalStart != -1 {
+		nextStart = optionalStart
+		templateType = "optional"
+	} else {
+		return nil // No templates found
+	}
+
+	absoluteStart := startPos + nextStart
+
+	// Find template end
+	var endMarker string
+	var markerLength int
+	if templateType == "required" {
+		endMarker = "}}"
+		markerLength = 2
+	} else {
+		endMarker = "]"
+		markerLength = 1
+	}
+
+	endIndex := strings.Index(remaining[nextStart:], endMarker)
+	if endIndex == -1 {
+		// Malformed template - treat rest as text by returning no match
+		return nil
+	}
+
+	absoluteEnd := absoluteStart + endIndex + markerLength
+
+	return &templateMatch{
+		Start: absoluteStart,
+		End:   absoluteEnd,
+		Type:  templateType,
+	}
 }
 
 // parseField parses a field enclosed in {{ }} or [ ]
