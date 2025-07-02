@@ -1,12 +1,12 @@
 {
   "name": "studio-mcp",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Make any CLI command an MCP server",
   "bin": {
-    "studio-mcp": "./run.js"
+    "studio-mcp": "./bin/studio-mcp"
   },
   "scripts": {
-    "postinstall": "node install.js"
+    "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [
     "mcp",
@@ -18,19 +18,21 @@
   "author": "Martin Emde <me@martinemde.com>",
   "license": "MIT",
   "homepage": "https://github.com/studio-mcp/studio-mcp",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/studio-mcp/studio-mcp.git",
-    "directory": "studio-mcp"
-  },
+  "repository": "studio-mcp/studio-mcp",
   "files": [
-    "run.js",
-    "install.js",
+    "scripts/",
     "bin/",
     "README.md",
     "LICENSE"
   ],
   "engines": {
     "node": ">=18.0.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "bin-links": "^5.0.0",
+    "https-proxy-agent": "^7.0.2",
+    "node-fetch": "^3.3.2",
+    "tar": "7.4.3"
   }
 }
