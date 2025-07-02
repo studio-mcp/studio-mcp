@@ -4,6 +4,7 @@ project_name: studio-mcp
 
 before:
   hooks:
+    - ./scripts/sync-version.sh
     - go mod tidy
     - go generate ./...
 

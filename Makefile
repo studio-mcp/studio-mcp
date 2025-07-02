@@ -25,14 +25,14 @@ version: ## Show current version information
 	@echo "Binary version:"
 	@if [ -f bin/studio-mcp ]; then ./bin/studio-mcp --version; else echo "Binary not built. Run 'make build' first."; fi
 
-sync-version: ## Sync package.json version with git tags
+sync-version: ## Sync package.json version with latest git tag (for testing)
 	./scripts/sync-version.sh
 
 bump-version: ## Bump version (usage: make bump-version VERSION=1.2.3)
 ifndef VERSION
 	$(error VERSION is required. Usage: make bump-version VERSION=1.2.3)
 endif
-	./scripts/sync-version.sh $(VERSION)
+	git tag -a v$(VERSION) -m "Release v$(VERSION)"
 
 verify-release: ## Verify the release setup locally
 	@echo "🔍 Verifying release setup..."
@@ -103,17 +103,21 @@ endif
 	@echo "🚀 Starting release process for v$(VERSION)..."
 	$(MAKE) pre-release-checks VERSION=$(VERSION)
 	@echo ""
-	@echo "Creating release v$(VERSION)..."
+	@echo "Creating and pushing tag v$(VERSION)..."
 	$(MAKE) bump-version VERSION=$(VERSION)
-	@echo ""
-	@echo "Pushing tag v$(VERSION)..."
 	git push origin v$(VERSION)
 	@echo ""
 	@echo "🎉 Release v$(VERSION) initiated!"
-	@echo "📋 Next steps:"
-	@echo "  1. Monitor GitHub Actions: https://github.com/studio-mcp/studio-mcp/actions"
-	@echo "  2. Check GitHub Release: https://github.com/studio-mcp/studio-mcp/releases"
-	@echo "  3. Verify NPM publish: https://www.npmjs.com/package/studio-mcp"
+	@echo "📋 The GitHub Actions workflow will now:"
+	@echo "  • Sync package.json version to $(VERSION)"
+	@echo "  • Build cross-platform binaries with GoReleaser"
+	@echo "  • Create GitHub release with binaries + checksums"
+	@echo "  • Publish NPM package that fetches those binaries"
+	@echo ""
+	@echo "📋 Monitor progress:"
+	@echo "  1. GitHub Actions: https://github.com/studio-mcp/studio-mcp/actions"
+	@echo "  2. GitHub Release: https://github.com/studio-mcp/studio-mcp/releases"
+	@echo "  3. NPM Package: https://www.npmjs.com/package/studio-mcp"
 	@echo "  4. Test install: npm install studio-mcp@$(VERSION)"
 
 dev: ## Run in development mode
