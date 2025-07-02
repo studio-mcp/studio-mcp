@@ -54,8 +54,11 @@ jobs:
 
       - name: Create binary placeholder
         run: |
+          # Remove any existing binary (from GoReleaser or local builds)
+          rm -f bin/studio-mcp
           mkdir -p bin
           touch bin/studio-mcp
+          echo "Created zero-byte placeholder:"
           ls -la bin/
 
       - name: Install dependencies
