@@ -25,11 +25,11 @@ import "studio-mcp/cmd"
 
 // Version information injected by GoReleaser at build time
 var (
-	version = "dev"
+	Version = "dev"
 	commit  = "none"
 	date    = "unknown"
 )
 
 func main() {
-	cmd.Execute(version, commit, date)
+	cmd.Execute(Version, commit, date)
 }
