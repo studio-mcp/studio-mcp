@@ -40,13 +40,13 @@ You can run almost any command. Since you're just renting the place, please be a
 These install instructions are like my lease agreement: full of gotchas.
 Have your lawyer read it over. (You do have a lawyer right?)
 
-You can install to your system with `npm`, use `npx` directly, or install with `go install github.com/martinemde/studio-mcp@latest`
+You can install to your system with `npm`, use `npx` directly, or install with `go install github.com/studio-mcp/studio-mcp@latest`
 
 ```sh
 npm install -g studio-mcp
 ```
 
-Or download directly from [GitHub Releases](https://github.com/martinemde/studio-mcp/releases/latest) and add to your PATH yourself.
+Or download directly from [GitHub Releases](https://github.com/studio-mcp/studio-mcp/releases/latest) and add to your PATH yourself.
 
 ## Unpack (it's an apartment metaphor)
 
@@ -158,7 +158,7 @@ Uncovered portions are tenant's responsibility. (no one appreciates how hard it 
 
 This is your studio too. Bugs, bedbugs, features, ideas? Swing by the repo during open-house:
 
-🏠 https://github.com/martinemde/studio-mcp
+🏠 https://github.com/studio-mcp/studio-mcp
 
 ## Lease Terms: MIT
 

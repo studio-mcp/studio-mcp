@@ -62,7 +62,7 @@ changelog:
 
 release:
   github:
-    owner: martinemde
+    owner: studio-mcp
     name: studio-mcp
   draft: false
   prerelease: auto

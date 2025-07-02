@@ -77,14 +77,14 @@ The GitHub Actions workflow (`.github/workflows/release.yml`) automatically:
 ### Step 5: Verify Release
 ```bash
 # Check GitHub release was created
-open https://github.com/martinemde/studio-mcp/releases/latest
+open https://github.com/studio-mcp/studio-mcp/releases/latest
 
 # Test npm installation
 npm install -g studio-mcp@latest
 studio-mcp --version
 
 # Test Go installation
-go install github.com/martinemde/studio-mcp@latest
+go install github.com/studio-mcp/studio-mcp@latest
 studio-mcp --version
 ```
 

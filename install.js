@@ -20,7 +20,7 @@ const binName = platform === "darwin"
   ? "studio-mcp-linux"
   : "studio-mcp-win.exe";
 
-const url = `https://github.com/martinemde/studio-mcp/releases/latest/download/${binName}`;
+const url = `https://github.com/studio-mcp/studio-mcp/releases/latest/download/${binName}`;
 const outPath = path.join(binDir, binName);
 
 console.log(`Downloading ${binName} from GitHub releases...`);
