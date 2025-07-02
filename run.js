@@ -5,7 +5,6 @@ const fs = require("fs");
 const os = require("os");
 
 const platform = os.platform();
-const arch = os.arch();
 const binDir = path.join(__dirname, "bin");
 
 // Normalize platform names to match our binary naming convention
@@ -27,7 +26,7 @@ const binPath = fs.existsSync(localBinPath) ? localBinPath : distributedBinPath;
 
 // Check if binary exists, if not try to download it
 if (!fs.existsSync(binPath)) {
-  console.log("Binary not found, attempting to download...");
+  console.error("Binary not found, attempting to download...");
   const { execSync } = require("child_process");
   try {
     execSync("node " + path.join(__dirname, "install.js"), { stdio: "inherit" });

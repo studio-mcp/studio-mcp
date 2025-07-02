@@ -9,7 +9,7 @@ const binDir = path.join(__dirname, "bin");
 // Check if we already have a local binary (from local build)
 const localBinPath = path.join(binDir, platform === "win32" ? "studio-mcp.exe" : "studio-mcp");
 if (fs.existsSync(localBinPath)) {
-  console.log("✅ Local binary already available:", localBinPath);
+  console.error("✅ Local binary already available:", localBinPath);
   return;
 }
 
@@ -23,14 +23,14 @@ const binName = platform === "darwin"
 const url = `https://github.com/studio-mcp/studio-mcp/releases/latest/download/${binName}`;
 const outPath = path.join(binDir, binName);
 
-console.log(`Downloading ${binName} from GitHub releases...`);
+console.error(`Downloading ${binName} from GitHub releases...`);
 
 fs.mkdirSync(binDir, { recursive: true });
 
 https.get(url, res => {
   if (res.statusCode !== 200) {
-    console.log(`No pre-built binary available (HTTP ${res.statusCode})`);
-    console.log("Binary will be downloaded on first use or you can build from source.");
+    console.error(`No pre-built binary available (HTTP ${res.statusCode})`);
+    console.error("Binary will be downloaded on first use or you can build from source.");
     return; // Exit gracefully without error
   }
 
@@ -39,7 +39,7 @@ https.get(url, res => {
 
   file.on("finish", () => {
     file.close(() => {
-      console.log("✅ Installed binary:", outPath);
+      console.error("✅ Installed binary:", outPath);
     });
   });
 
@@ -49,7 +49,7 @@ https.get(url, res => {
     process.exit(1);
   });
 }).on("error", err => {
-  console.log("Binary not available for download:", err.message);
-  console.log("Binary will be downloaded on first use or you can build from source.");
+  console.error("Binary not available for download:", err.message);
+  console.error("Binary will be downloaded on first use or you can build from source.");
   // Exit gracefully without error
 });
