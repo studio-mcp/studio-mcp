@@ -50,6 +50,11 @@ jobs:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Create binary placeholder
+        run: |
+          mkdir -p bin
+          touch bin/studio-mcp
+
       - name: Install dependencies
         run: npm ci
 
