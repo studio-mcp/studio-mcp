@@ -1,6 +1,6 @@
 {
   "name": "studio-mcp",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Make any CLI command an MCP server",
   "bin": {
     "studio-mcp": "./bin/studio-mcp"
