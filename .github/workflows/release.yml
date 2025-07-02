@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
 
 jobs:
   goreleaser:
@@ -59,6 +60,7 @@ jobs:
         run: npm ci
 
       - name: Publish to NPM
-        run: npm publish
+        run: npm publish --provenance --registry https://registry.npmjs.org
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
