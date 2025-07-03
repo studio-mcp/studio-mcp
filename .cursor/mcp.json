@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+      "say": {
+        "command": "npx",
+        "args": ["--silent", "-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      },
+    }
+  }
