@@ -17,7 +17,7 @@ Everything after the `studio-mcp` command will be turned into an MCP tool that r
 `studio-mcp` uses a very simple Mustache-like template syntax in order to tell the LLM how to use your MCP command.
 
 ```sh
-$ npx -y studio-mcp command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
+$ npx --silent -y studio-mcp command "{{ required_argument # Description of argument }}" "[optional_args... # any array of arguments]"
 ```
 
 `studio-mcp` turns this into an input schema for the MCP tool so that tool calls know what to send:
@@ -64,7 +64,7 @@ It should open your Claude Desktop MCP configuration. (e.g. `~/Library/Applicati
   "mcpServers": {
     "say": {
       "command": "studio-mcp",
-      "args": ["say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "args": ["--silent", "-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -79,7 +79,7 @@ Add to your `~/.cursor/mcp.json` (in your home or project directory) or go to To
   "mcpServers": {
     "say": {
       "command": "npx",
-      "args": ["-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
+      "args": ["--silent", "-y", "studio-mcp", "say", "-v", "siri", "{{speech # A concise message to say outloud}}"]
     },
   }
 }
@@ -95,8 +95,9 @@ It's a lot of the same here.
     "servers": {
       "echo": {
         "type": "stdio",
-        "command": "studio-mcp",
-        "args": ["echo", "{{text#What do you want to say?}}"]
+        "command": "npx",
+
+        "args": ["--silent", "-y", "studio-mcp", "echo", "{{text#What do you want to say?}}"]
       }
     }
   }
