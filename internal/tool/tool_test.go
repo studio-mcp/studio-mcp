@@ -49,6 +49,11 @@ func TestTool_Execute(t *testing.T) {
 			args:         []string{"echo", "hello world with spaces"},
 			expectOutput: "hello world with spaces",
 		},
+		{
+			name:         "handles command with no output",
+			args:         []string{"true"},
+			expectOutput: "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -128,6 +133,13 @@ func TestTool_CreateToolFunction(t *testing.T) {
 			args:           map[string]any{},
 			expectIsError:  true,
 			expectContains: "Validation error: missing required parameter: name",
+		},
+		{
+			name:          "handles command with no output",
+			blueprint:     &MockBlueprint{commandArgs: []string{"true"}},
+			args:          map[string]any{},
+			expectText:    "",
+			expectIsError: false,
 		},
 	}
 
