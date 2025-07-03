@@ -1,4 +1,4 @@
-.PHONY: help build test version sync-version release dev clean verify-release pre-release-checks
+.PHONY: help build test version sync-version release dev clean verify-release pre-release-checks install-dev uninstall-dev claude claude-remove
 
 # Default target
 help: ## Show this help message
@@ -12,6 +12,59 @@ DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 build: ## Build the Go binary
 	go build -ldflags "-X main.Version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)" -o bin/studio-mcp
+
+install-dev: build ## Build and install binary to /usr/local/bin for dev testing
+	@echo "Installing studio-mcp to /usr/local/bin..."
+	sudo cp bin/studio-mcp /usr/local/bin/studio-mcp-dev
+	@echo "✅ Installed as 'studio-mcp-dev' (to avoid conflicts with released version)"
+	@echo "📋 Test with: studio-mcp-dev --version"
+	@echo "📋 Uninstall with: make uninstall-dev"
+
+uninstall-dev: ## Remove dev binary from /usr/local/bin
+	@echo "Removing studio-mcp-dev from /usr/local/bin..."
+	sudo rm -f /usr/local/bin/studio-mcp-dev
+	@echo "✅ Uninstalled studio-mcp-dev"
+
+claude: install-dev ## Install echo server into Claude Desktop MCP config
+	@echo "Installing echo server into Claude Desktop..."
+	@CLAUDE_CONFIG="$$HOME/Library/Application Support/Claude/claude_desktop_config.json"; \
+	if [ ! -f "$$CLAUDE_CONFIG" ]; then \
+		echo "Creating new Claude Desktop config..."; \
+		mkdir -p "$$(dirname "$$CLAUDE_CONFIG")"; \
+		echo '{"mcpServers":{}}' > "$$CLAUDE_CONFIG"; \
+	fi; \
+	echo "Updating MCP configuration..."; \
+	node -e "const fs = require('fs'); \
+	const configPath = '$$CLAUDE_CONFIG'; \
+	const config = JSON.parse(fs.readFileSync(configPath, 'utf8')); \
+	config.mcpServers = config.mcpServers || {}; \
+	config.mcpServers.echo = { \
+		command: '/usr/local/bin/studio-mcp-dev', \
+		args: ['echo', '{{text # a message that will be echoed back to you}}'] \
+	}; \
+	fs.writeFileSync(configPath, JSON.stringify(config, null, 2));" && \
+	echo "✅ Echo server installed in Claude Desktop" && \
+	echo "📋 Restart Claude Desktop to load the new server" && \
+	echo "📋 Remove with: make claude-remove"
+
+claude-remove: ## Remove echo server from Claude Desktop MCP config
+	@echo "Removing echo server from Claude Desktop..."
+	@CLAUDE_CONFIG="$$HOME/Library/Application Support/Claude/claude_desktop_config.json"; \
+	if [ ! -f "$$CLAUDE_CONFIG" ]; then \
+		echo "⚠️  Claude Desktop config not found"; \
+		exit 0; \
+	fi; \
+	node -e "const fs = require('fs'); \
+	const configPath = '$$CLAUDE_CONFIG'; \
+	const config = JSON.parse(fs.readFileSync(configPath, 'utf8')); \
+	if (config.mcpServers && config.mcpServers.echo) { \
+		delete config.mcpServers.echo; \
+		fs.writeFileSync(configPath, JSON.stringify(config, null, 2)); \
+		console.log('✅ Echo server removed from Claude Desktop'); \
+	} else { \
+		console.log('⚠️  Echo server not found in configuration'); \
+	}" && \
+	echo "📋 Restart Claude Desktop to apply changes"
 
 test: ## Run tests
 	go test ./...
