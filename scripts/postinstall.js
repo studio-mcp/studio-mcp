@@ -102,7 +102,13 @@ async function main() {
   const yarnGlobal = JSON.parse(
     process.env.npm_config_argv || "{}"
   ).original?.includes("global");
-  if (process.env.npm_config_global || yarnGlobal) {
+
+  // Allow npx usage - npx creates temporary local installs, not true global installs
+  const isNpxContext = process.env.npm_command === "exec" ||
+                      process.env.npm_execpath?.includes("npx") ||
+                      process.env._?.includes("npx");
+
+  if ((process.env.npm_config_global || yarnGlobal) && !isNpxContext) {
     throw errGlobal;
   }
   if (!arch || !platform) {
