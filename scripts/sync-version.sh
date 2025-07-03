@@ -51,16 +51,7 @@ fi
 
 echo "Updated package.json version to: $VERSION"
 
-# If we're creating a new version, create/update the git tag
-if [ -n "$1" ]; then
-    git add package.json
-    git commit -m "Bump version to $VERSION"
-    echo "Creating git tag: $TAG"
-    git tag -a "$TAG" -m "Release $TAG" || echo "Tag $TAG already exists"
-fi
-
 echo "Version sync complete!"
-echo "To release:"
-echo "  1. Commit any changes: git add package.json && git commit -m 'Bump version to $VERSION'"
-echo "  2. Push tag: git push origin $TAG"
-echo "  3. GoReleaser will handle the rest via GitHub Actions"
+
+# Note: This script only updates package.json in-place for GoReleaser
+# It does not commit changes - that's handled by the release workflow
