@@ -15,3 +15,5 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/modelcontextprotocol/go-sdk => github.com/martinemde/go-sdk v0.1.1-0.20250703025506-d5f724dc2d27

@@ -613,6 +613,40 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 			require.Len(t, content, 1)
 		})
 
+		t.Run("handles commands with no output", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "12a",
+				Method:  "tools/call",
+				Params: map[string]interface{}{
+					"name":      "true",
+					"arguments": map[string]interface{}{},
+				},
+			}
+
+			response := sendMCPRequest(t, []string{"true"}, request, timeout)
+
+			assert.Equal(t, "2.0", response.JSONRPC)
+			assert.Equal(t, "12a", response.ID)
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+
+			// Should not be an error
+			if isError, exists := result["isError"]; exists {
+				assert.Equal(t, false, isError)
+			}
+
+			content, ok := result["content"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, content, 1)
+
+			textContent, ok := content[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "text", textContent["type"])
+			assert.Equal(t, "", textContent["text"]) // Empty string, but field must exist
+		})
+
 		t.Run("handles nonexistent tools", func(t *testing.T) {
 			request := MCPRequest{
 				JSONRPC: "2.0",
