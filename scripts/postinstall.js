@@ -5,6 +5,8 @@
 // Released under the MIT License
 // Adapted for studio-mcp 2025-07-02
 
+// NOTE: we output to stderrr because stdout is reserved for MCP NDJSON.
+
 // Ref 1: https://github.com/sanathkr/go-npm
 // Ref 2: https://medium.com/xendit-engineering/how-we-repurposed-npm-to-publish-and-distribute-our-go-binaries-for-internal-cli-23981b80911b
 "use strict";
@@ -57,7 +59,6 @@ const fetchAndParseCheckSumFile = async (packageJson, agent) => {
   const pkgName = packageJson.name;
   const repo = packageJson.repository;
   const checksumFileUrl = `https://github.com/${repo}/releases/download/v${version}/${pkgName}_${version}_checksums.txt`;
-  console.error("Downloading", checksumFileUrl);
 
   // Fetch the checksum file
   console.error("Downloading", checksumFileUrl);
