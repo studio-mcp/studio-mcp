@@ -647,6 +647,38 @@ func TestStudioMCPServerIntegration(t *testing.T) {
 			assert.Equal(t, "", textContent["text"]) // Empty string, but field must exist
 		})
 
+		t.Run("handles missing required arguments", func(t *testing.T) {
+			request := MCPRequest{
+				JSONRPC: "2.0",
+				ID:      "12b",
+				Method:  "tools/call",
+				Params: map[string]interface{}{
+					"name":      "echo",
+					"arguments": map[string]interface{}{
+						// Missing required "text" argument
+					},
+				},
+			}
+
+			response := sendMCPRequest(t, []string{"echo", "{{text#Required text to echo}}"}, request, timeout)
+
+			assert.Equal(t, "2.0", response.JSONRPC)
+			assert.Equal(t, "12b", response.ID)
+
+			result, ok := response.Result.(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, true, result["isError"])
+
+			content, ok := result["content"].([]interface{})
+			require.True(t, ok)
+			require.Len(t, content, 1)
+
+			textContent, ok := content[0].(map[string]interface{})
+			require.True(t, ok)
+			assert.Equal(t, "text", textContent["type"])
+			assert.Contains(t, textContent["text"], "Validation error: missing required parameter: text")
+		})
+
 		t.Run("handles nonexistent tools", func(t *testing.T) {
 			request := MCPRequest{
 				JSONRPC: "2.0",
