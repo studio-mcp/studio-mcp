@@ -1,5 +1,8 @@
 # Studio MCP
 
+> [!NOTE]
+> This repository is for the old name `studio-mcp`. I've replaced it with the npm package `@studio-mcp/studio`.
+
 Make any CLI into a single tool MCP server.
 
 > Bright Studio Apt – No Walls, No Rules – $0/mo OBO.
