@@ -1,0 +1,25 @@
+# Source control
+.git/
+.jj/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+.nyc_output/
+*.test.js
+*.spec.js
+
+# Development
+.editorconfig
+.env*
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*

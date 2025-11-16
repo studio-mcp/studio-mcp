@@ -1,0 +1,18 @@
+{
+  "name": "studio-mcp",
+  "version": "0.1.0",
+  "description": "Alias package for @studio-mcp/studio CLI",
+  "type": "module",
+  "bin": {
+    "studio-mcp": "./bin/studio-mcp.js"
+  },
+  "dependencies": {
+    "@studio-mcp/studio": "*"
+  },
+  "keywords": [
+    "mcp",
+    "studio"
+  ],
+  "author": "Martin Emde <me@martinemde.com>",
+  "license": "MIT"
+}
